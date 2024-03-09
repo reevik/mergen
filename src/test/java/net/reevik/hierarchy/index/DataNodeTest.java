@@ -17,7 +17,6 @@ package net.reevik.hierarchy.index;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.Set;
 import java.util.function.Consumer;
 import org.junit.jupiter.api.Test;
 
@@ -41,7 +40,7 @@ class DataNodeTest {
     });
     assertThat(parent.getKeySet()).hasSize(1);
     var leftKey = parent.getKeySet().iterator().next();
-    assertThat(leftKey.indexRangeKey()).isEqualTo("200");
+    assertThat(leftKey.indexKey()).isEqualTo("200");
     ifDataNodeThenRun(leftKey.node(), (n) -> {
       var dataRecordSet = n.getDataRecordSet();
       assertThat(dataRecordSet).hasSize(1);
@@ -74,7 +73,7 @@ class DataNodeTest {
       dataNodeChild.add(dataRecord450);
       assertThat(parent.getSize()).isEqualTo(2);
       assertThat(parent.getParent().getSize()).isEqualTo(2);
-      assertThat(parentKeySet.stream().map(Key::indexRangeKey).toList()).contains("600");
+      assertThat(parentKeySet.stream().map(Key::indexKey).toList()).contains("600");
     }
   }
 

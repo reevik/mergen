@@ -16,7 +16,9 @@
 package net.reevik.hierarchy.index;
 
 import java.util.Set;
+import net.reevik.mikron.annotation.Managed;
 
+@Managed
 public class BTreeIndex implements NodeObserver {
 
   static final int ORDER = 3;

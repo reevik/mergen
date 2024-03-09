@@ -14,7 +14,26 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
 
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <source>21</source>
+          <target>21</target>
+        </configuration>
+        <version>3.11.0</version>
+      </plugin>
+    </plugins>
+  </build>
+
   <dependencies>
+    <dependency>
+      <groupId>net.reevik</groupId>
+      <artifactId>mikron</artifactId>
+      <version>0.4.0</version>
+    </dependency>
     <dependency>
       <groupId>ch.qos.logback</groupId>
       <artifactId>logback-classic</artifactId>
@@ -25,7 +44,6 @@
       <artifactId>junit-jupiter-engine</artifactId>
       <version>5.10.1</version>
     </dependency>
-
     <dependency>
       <groupId>org.assertj</groupId>
       <artifactId>assertj-core</artifactId>

@@ -30,6 +30,26 @@ public class DataNode extends Node {
   }
 
   private void split() {
+    var leftNode = newLeftNode();
+    removeItems(leftNode);
+    createRootIfNotExists();
+    getParent().add(newLeftNodeKey(leftNode));
+  }
+
+  private void createRootIfNotExists() {
+    if (!hasParent()) {
+      var root = newRoot();
+      setParent(root);
+      root.add(this.toRightMostKey());
+    }
+  }
+
+  private void removeItems(DataNode leftNode) {
+    dataRecordSet.removeAll(leftNode.dataRecordSet);
+  }
+
+  // Splitting the existing node into two parts at the mid-point.
+  private DataNode newLeftNode() {
     var midPoint = getMidPoint();
     var leftNode = new DataNode();
     var counter = 0;
@@ -40,15 +60,10 @@ public class DataNode extends Node {
         break;
       }
     }
-    dataRecordSet.removeAll(leftNode.dataRecordSet);
-    if (!hasParent()) {
-      createRoot();
-      getParent().add(asRightMostKey());
-    }
-    getParent().add(newLeftNodeKey(leftNode));
+    return leftNode;
   }
 
-  public Key asRightMostKey() {
+  public Key toRightMostKey() {
     return new Key(dataRecordSet.iterator().next().indexKey(), this);
   }
 
@@ -57,11 +72,11 @@ public class DataNode extends Node {
     return new Key(dataRecordSet.iterator().next().indexKey(), leftNode);
   }
 
-  private void createRoot() {
+  private InnerNode newRoot() {
     var root = new InnerNode();
     root.registerObservers(getNodeObservers());
-    setParent(root);
     notifyObservers(root);
+    return root;
   }
 
   private int getMidPoint() {
@@ -80,9 +95,9 @@ public class DataNode extends Node {
 
   @Override
   Set<DataRecord> query(String query) {
-    for (var record : dataRecordSet) {
-      if (record.indexKey().equals(query)) {
-        return Set.of(record);
+    for (var dataRecord : dataRecordSet) {
+      if (dataRecord.indexKey().equals(query)) {
+        return Set.of(dataRecord);
       }
     }
     return Set.of();

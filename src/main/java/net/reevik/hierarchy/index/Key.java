@@ -17,15 +17,15 @@ package net.reevik.hierarchy.index;
 
 import java.util.Objects;
 
-public record Key(Object indexRangeKey, Node node) implements Comparable<Key> {
+public record Key(Object indexKey, Node node) implements Comparable<Key> {
 
   @Override
   public int compareTo(Key o) {
-    return indexRangeKey.toString().compareTo(o.indexRangeKey.toString());
+    return indexKey.toString().compareTo(o.indexKey.toString());
   }
 
   public boolean isRightMost() {
-    return indexRangeKey.toString().compareTo(node.firstIndexKey().toString()) <= 0;
+    return indexKey.toString().compareTo(node.firstIndexKey().toString()) <= 0;
   }
 
   @Override
@@ -37,24 +37,23 @@ public record Key(Object indexRangeKey, Node node) implements Comparable<Key> {
       return false;
     }
     Key key = (Key) o;
-    return Objects.equals(indexRangeKey, key.indexRangeKey);
+    return Objects.equals(indexKey, key.indexKey);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(indexRangeKey);
+    return Objects.hash(indexKey);
   }
 
   @Override
   public String toString() {
     return "Key{" +
-        "indexRangeKey=" + indexRangeKey +
+        "indexKey=" + indexKey +
         '}';
   }
 
-  @Override
-  public Object indexRangeKey() {
-    return indexRangeKey;
+  public Object indexKey() {
+    return indexKey;
   }
 
   @Override

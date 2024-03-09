@@ -26,7 +26,7 @@ public class InnerNode extends Node {
   public void upsert(DataRecord dataRecord) {
     var indexKeyAsStr = dataRecord.indexKey().toString();
     for (var key : keySet) {
-      if (indexKeyAsStr.compareTo(key.indexRangeKey().toString()) <= 0) {
+      if (indexKeyAsStr.compareTo(key.indexKey().toString()) <= 0) {
         key.node().upsert(dataRecord);
         return;
       }
@@ -35,13 +35,13 @@ public class InnerNode extends Node {
   }
 
   @Override
-  Set<DataRecord> query(String record) {
+  Set<DataRecord> query(String dataRecord) {
     for (var key : keySet) {
-      if (record.compareTo(key.indexRangeKey().toString()) < 0) {
-        return key.node().query(record);
+      if (dataRecord.compareTo(key.indexKey().toString()) < 0) {
+        return key.node().query(dataRecord);
       }
     }
-    return rightMost.node().query(record);
+    return rightMost.node().query(dataRecord);
   }
 
   void add(Key key) {
@@ -96,7 +96,7 @@ public class InnerNode extends Node {
   }
 
   public Key asRightMostKey() {
-    return new Key(keySet.iterator().next().indexRangeKey(), this);
+    return new Key(keySet.iterator().next().indexKey(), this);
   }
 
   private Key newLeftNodeKey(InnerNode leftNode) {
@@ -117,7 +117,7 @@ public class InnerNode extends Node {
 
   @Override
   Object firstIndexKey() {
-    return keySet.first().indexRangeKey();
+    return keySet.first().indexKey();
   }
 
   @Override
