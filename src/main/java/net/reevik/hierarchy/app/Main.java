@@ -3,6 +3,7 @@ package net.reevik.hierarchy.app;
 import java.util.Set;
 import java.util.function.Supplier;
 import net.reevik.hierarchy.index.BTreeIndex;
+import net.reevik.hierarchy.index.DataEntity;
 import net.reevik.hierarchy.index.DataRecord;
 import net.reevik.mikron.annotation.ManagedApplication;
 import net.reevik.mikron.ioc.MikronContext;
@@ -31,7 +32,7 @@ public class Main {
     return () -> new RuntimeException("No managed index instance found.");
   }
 
-  static DataRecord createRecord(String indexKey, String payload) {
-    return new DataRecord(indexKey, payload.getBytes());
+  static DataEntity createRecord(String indexKey, String payload) {
+    return new DataEntity(indexKey, payload.getBytes());
   }
 }

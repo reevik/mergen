@@ -16,8 +16,20 @@
 package net.reevik.hierarchy.index;
 
 import java.util.Objects;
+import net.reevik.hierarchy.io.SerializableObject;
 
-public record Key(Object indexKey, Node node) implements Comparable<Key> {
+public class Key implements Comparable<Key>, SerializableObject {
+  private final Object indexKey;
+  private final Node node;
+  private int offset;
+  private int size;
+
+  public Key(Object indexKey, Node node) {
+    this.indexKey = indexKey;
+    this.node = node;
+
+    byte[] referenceNode = indexKey.toString().getBytes();
+  }
 
   @Override
   public int compareTo(Key o) {
@@ -56,8 +68,21 @@ public record Key(Object indexKey, Node node) implements Comparable<Key> {
     return indexKey;
   }
 
-  @Override
   public Node node() {
     return node;
+  }
+
+  public int getOffset() {
+    return offset;
+  }
+
+  @Override
+  public long offset() {
+    return 0;
+  }
+
+  @Override
+  public byte[] serialize() {
+    return new byte[0];
   }
 }

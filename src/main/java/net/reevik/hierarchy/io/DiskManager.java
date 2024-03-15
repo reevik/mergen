@@ -13,34 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package net.reevik.hierarchy.index;
+package net.reevik.hierarchy.io;
 
-import java.util.Set;
-import net.reevik.mikron.annotation.Managed;
+import java.io.Closeable;
 
-@Managed
-public class BTreeIndex implements NodeObserver {
-  static final int ORDER = 3;
+public enum DiskManager implements Closeable {
+  DATA(new FileIO("Datafile")),
+  INDEX(new FileIO("Indexfile"));
 
-  private Node root;
-
-  public void upsert(DataEntity dataEntity) {
-    if (root == null) {
-      root = new DataNode();
-      root.registerObserver(this);
-    }
-    root.upsert(dataEntity);
+  DiskManager(FileIO file) {
+    this.file = file;
   }
 
-  public Set<DataRecord> query(String indexKey) {
-    return root.query(indexKey);
-  }
+  private final FileIO file;
 
   @Override
-  public void onNewRoot(Node newRoot) {
-    root = newRoot;
+  public void close() {
+    INDEX.close();
+    DATA.close();
   }
 
-  public void load() {
+  public long write(byte[] buffer) {
+    return file.write(buffer);
   }
 }

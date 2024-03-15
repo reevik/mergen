@@ -20,18 +20,19 @@ import java.util.List;
 import java.util.Set;
 
 public abstract class Node {
-
   private final List<NodeObserver> nodeObservers = new LinkedList<>();
 
   private InnerNode parent;
 
   abstract Object firstIndexKey();
 
-  abstract void upsert(DataRecord record);
+  abstract void upsert(DataEntity record);
 
   abstract Set<DataRecord> query(String record);
 
-  abstract int getSize();
+  abstract long getSize();
+
+  abstract long getOffset();
 
   public InnerNode getParent() {
     return parent;

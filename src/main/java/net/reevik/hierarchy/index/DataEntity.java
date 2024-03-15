@@ -15,32 +15,5 @@
  */
 package net.reevik.hierarchy.index;
 
-import java.util.Set;
-import net.reevik.mikron.annotation.Managed;
-
-@Managed
-public class BTreeIndex implements NodeObserver {
-  static final int ORDER = 3;
-
-  private Node root;
-
-  public void upsert(DataEntity dataEntity) {
-    if (root == null) {
-      root = new DataNode();
-      root.registerObserver(this);
-    }
-    root.upsert(dataEntity);
-  }
-
-  public Set<DataRecord> query(String indexKey) {
-    return root.query(indexKey);
-  }
-
-  @Override
-  public void onNewRoot(Node newRoot) {
-    root = newRoot;
-  }
-
-  public void load() {
-  }
+public record DataEntity(Object indexKey, byte[] payload) {
 }

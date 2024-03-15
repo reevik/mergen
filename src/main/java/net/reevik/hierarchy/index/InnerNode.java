@@ -17,21 +17,22 @@ package net.reevik.hierarchy.index;
 
 import java.util.Set;
 import java.util.TreeSet;
+import net.reevik.hierarchy.io.SerializableObject;
 
-public class InnerNode extends Node {
+public class InnerNode extends Node implements SerializableObject {
 
   private final TreeSet<Key> keySet = new TreeSet<>();
   private Key rightMost;
 
-  public void upsert(DataRecord dataRecord) {
-    var indexKeyAsStr = dataRecord.indexKey().toString();
+  public void upsert(DataEntity dataEntity) {
+    var indexKeyAsStr = dataEntity.indexKey().toString();
     for (var key : keySet) {
       if (indexKeyAsStr.compareTo(key.indexKey().toString()) <= 0) {
-        key.node().upsert(dataRecord);
+        key.node().upsert(dataEntity);
         return;
       }
     }
-    rightMost.node().upsert(dataRecord);
+    rightMost.node().upsert(dataEntity);
   }
 
   @Override
@@ -66,6 +67,14 @@ public class InnerNode extends Node {
   }
 
   private void split() {
+    InnerNode leftNode = newLeftNode();
+    removeItems(leftNode);
+    createParentIfNotExists();
+    getParent().add(newLeftNodeKey(leftNode));
+    reattachFirstNodeTo(leftNode);
+  }
+
+  private InnerNode newLeftNode() {
     var midPoint = getMidPoint();
     var leftNode = new InnerNode();
     var counter = 0;
@@ -76,10 +85,11 @@ public class InnerNode extends Node {
         break;
       }
     }
+    return leftNode;
+  }
+
+  private void removeItems(InnerNode leftNode) {
     keySet.removeAll(leftNode.keySet);
-    createParentIfNotExists();
-    getParent().add(newLeftNodeKey(leftNode));
-    reattachFirstNodeTo(leftNode);
   }
 
   private void createParentIfNotExists() {
@@ -121,8 +131,13 @@ public class InnerNode extends Node {
   }
 
   @Override
-  int getSize() {
+  long getSize() {
     return getTotalSize();
+  }
+
+  @Override
+  long getOffset() {
+    return keySet.getFirst().getOffset();
   }
 
   public Set<Key> getKeySet() {
@@ -135,5 +150,15 @@ public class InnerNode extends Node {
 
   public void setRightMost(Key rightMost) {
     this.rightMost = rightMost;
+  }
+
+  @Override
+  public long offset() {
+    return 0;
+  }
+
+  @Override
+  public byte[] serialize() {
+    return new byte[0];
   }
 }

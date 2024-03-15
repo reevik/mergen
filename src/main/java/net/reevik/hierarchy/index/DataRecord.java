@@ -15,13 +15,61 @@
  */
 package net.reevik.hierarchy.index;
 
+import java.nio.ByteBuffer;
 import java.util.Objects;
+import net.reevik.hierarchy.io.DiskManager;
+import net.reevik.hierarchy.io.SerializableObject;
 
-public record DataRecord(Object indexKey, byte [] payload) implements Comparable<DataRecord> {
+public class DataRecord implements Comparable<DataRecord>, SerializableObject {
+  private final Object indexKey;
+  private final byte[] payload;
+  private final long offset;
+
+  public DataRecord(Object indexKey, byte[] payload) {
+    this.indexKey = indexKey;
+    this.payload = payload;
+    this.offset = DiskManager.DATA.write(serialize());
+  }
+
 
   @Override
   public int compareTo(DataRecord o) {
     return indexKey.toString().compareTo(o.indexKey.toString());
+  }
+
+  public Object getIndexKey() {
+    return indexKey;
+  }
+
+  public byte[] getPayload() {
+    return payload;
+  }
+
+  @Override
+  public long offset() {
+    return offset;
+  }
+
+  @Override
+  public byte[] serialize() {
+    var indexKeyInBytes = indexKey.toString().getBytes();
+    var totalRecordSize = indexKeyInBytes.length + payload.length;
+    byte[] totalRecordSizeInBytes = getBytesOf(totalRecordSize);
+    byte[] byteRepresentation = new byte[totalRecordSizeInBytes.length + totalRecordSize];
+
+    System.arraycopy(totalRecordSizeInBytes, 0, byteRepresentation, 0,
+        totalRecordSizeInBytes.length);
+    System.arraycopy(indexKeyInBytes, 0, byteRepresentation, totalRecordSizeInBytes.length,
+        indexKeyInBytes.length);
+    System.arraycopy(payload, 0, byteRepresentation, indexKeyInBytes.length, payload.length);
+
+    return byteRepresentation;
+  }
+
+  private static byte[] getBytesOf(long totalRecordSize) {
+    var buffer = ByteBuffer.allocate(Long.BYTES);
+    buffer.putLong(totalRecordSize);
+    return buffer.array();
   }
 
   @Override
@@ -43,8 +91,6 @@ public record DataRecord(Object indexKey, byte [] payload) implements Comparable
 
   @Override
   public String toString() {
-    return "DataRecord{" +
-        "indexKey=" + indexKey +
-        '}';
+    return "DataRecord{" + "indexKey=" + indexKey + '}';
   }
 }

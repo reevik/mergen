@@ -13,34 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package net.reevik.hierarchy.index;
+package net.reevik.hierarchy.io;
 
-import java.util.Set;
-import net.reevik.mikron.annotation.Managed;
+public interface SerializableObject {
+  long offset();
 
-@Managed
-public class BTreeIndex implements NodeObserver {
-  static final int ORDER = 3;
-
-  private Node root;
-
-  public void upsert(DataEntity dataEntity) {
-    if (root == null) {
-      root = new DataNode();
-      root.registerObserver(this);
-    }
-    root.upsert(dataEntity);
-  }
-
-  public Set<DataRecord> query(String indexKey) {
-    return root.query(indexKey);
-  }
-
-  @Override
-  public void onNewRoot(Node newRoot) {
-    root = newRoot;
-  }
-
-  public void load() {
-  }
+  byte[] serialize();
 }

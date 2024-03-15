@@ -19,8 +19,11 @@ import java.util.Set;
 import java.util.TreeSet;
 
 public class DataNode extends Node {
-
   private final TreeSet<DataRecord> dataRecordSet = new TreeSet<>();
+
+  public void add(DataEntity dataEntity) {
+    add(new DataRecord(dataEntity.indexKey(), dataEntity.payload()));
+  }
 
   public void add(DataRecord dataRecord) {
     dataRecordSet.add(dataRecord);
@@ -52,9 +55,9 @@ public class DataNode extends Node {
   private DataNode newLeftNode() {
     var midPoint = getMidPoint();
     var leftNode = new DataNode();
-    var counter = 0;
+    var c = 0;
     for (var dataRecord : dataRecordSet) {
-      if (++counter < midPoint) {
+      if (++c < midPoint) {
         leftNode.add(dataRecord);
       } else {
         break;
@@ -64,12 +67,12 @@ public class DataNode extends Node {
   }
 
   public Key toRightMostKey() {
-    return new Key(dataRecordSet.iterator().next().indexKey(), this);
+    return new Key(dataRecordSet.iterator().next().getIndexKey(), this);
   }
 
   private Key newLeftNodeKey(DataNode leftNode) {
     leftNode.setParent(getParent());
-    return new Key(dataRecordSet.iterator().next().indexKey(), leftNode);
+    return new Key(dataRecordSet.iterator().next().getIndexKey(), leftNode);
   }
 
   private InnerNode newRoot() {
@@ -85,18 +88,18 @@ public class DataNode extends Node {
 
   @Override
   Object firstIndexKey() {
-    return dataRecordSet.first().indexKey();
+    return dataRecordSet.first().getIndexKey();
   }
 
   @Override
-  void upsert(DataRecord dataRecord) {
-    add(dataRecord);
+  void upsert(DataEntity dataEntity) {
+    add(dataEntity);
   }
 
   @Override
   Set<DataRecord> query(String query) {
     for (var dataRecord : dataRecordSet) {
-      if (dataRecord.indexKey().equals(query)) {
+      if (dataRecord.getIndexKey().equals(query)) {
         return Set.of(dataRecord);
       }
     }
@@ -104,8 +107,13 @@ public class DataNode extends Node {
   }
 
   @Override
-  int getSize() {
+  long getSize() {
     return dataRecordSet.size();
+  }
+
+  @Override
+  long getOffset() {
+    return dataRecordSet.first().offset();
   }
 
   public Set<DataRecord> getDataRecordSet() {
