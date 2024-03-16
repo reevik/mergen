@@ -15,6 +15,7 @@
  */
 package net.reevik.hierarchy.io;
 
+import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -38,6 +39,7 @@ public class FileIO implements Closeable {
     try {
       String mode = "rw";
       randomAccessFile = new RandomAccessFile(fileName, mode);
+      randomAccessFile.seek(randomAccessFile.length());
       channel = randomAccessFile.getChannel();
       return randomAccessFile.length();
     } catch (FileNotFoundException e) {
@@ -47,9 +49,10 @@ public class FileIO implements Closeable {
     }
   }
 
-  public long write(byte[] data) {
+  public long writeAt(byte[] data, long offset) {
     try {
       synchronized (this) {
+        randomAccessFile.seek(offset);
         var buffer = ByteBuffer.allocate(data.length);
         buffer.put(data);
         buffer.flip();
@@ -61,6 +64,33 @@ public class FileIO implements Closeable {
     }
 
     return currentOffset;
+  }
+
+  public long writeAt(byte[] data) {
+    try {
+      return writeAt(data, randomAccessFile.length());
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  public byte[] read(int offset, int size) {
+    try (var out = new ByteArrayOutputStream()) {
+      channel.position(offset);
+      var bufferSize = size;
+      if (bufferSize > channel.size()) {
+        bufferSize = (int) channel.size();
+      }
+      var buffer = ByteBuffer.allocate(bufferSize);
+      while (channel.read(buffer) > 0) {
+        out.write(buffer.array(), 0, buffer.position());
+        buffer.clear();
+      }
+
+      return out.toByteArray();
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   public String getFileName() {

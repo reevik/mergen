@@ -16,7 +16,12 @@
 package net.reevik.hierarchy.io;
 
 public interface SerializableObject {
-  long offset();
 
-  byte[] serialize();
+  long getOffset();
+
+  byte[] getBytes();
+
+  void load();
+
+  void persist();
 }

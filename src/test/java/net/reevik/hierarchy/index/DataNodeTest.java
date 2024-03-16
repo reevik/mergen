@@ -25,9 +25,9 @@ class DataNodeTest {
   @Test
   void testSplitDataWithoutParent() {
     var dataNode = new DataNode();
-    var dataRecord100 = createDataRecord("100");
-    var dataRecord200 = createDataRecord("200");
-    var dataRecord300 = createDataRecord("300");
+    var dataRecord100 = new KeyData("100", createDataRecord("100"));
+    var dataRecord200 = new KeyData("200", createDataRecord("200"));
+    var dataRecord300 = new KeyData("300", createDataRecord("300"));
     dataNode.add(dataRecord100);
     dataNode.add(dataRecord200);
     dataNode.add(dataRecord300);
@@ -35,14 +35,14 @@ class DataNodeTest {
     var parent = dataNode.getParent();
     assertThat(parent).isNotNull();
     ifDataNodeThenRun(parent.getRightMost().node(), (n) -> {
-      assertThat(n.getDataRecordSet()).contains(dataRecord200);
-      assertThat(n.getDataRecordSet()).contains(dataRecord300);
+      assertThat(n.getKeyDataSet()).contains(dataRecord200);
+      assertThat(n.getKeyDataSet()).contains(dataRecord300);
     });
     assertThat(parent.getKeySet()).hasSize(1);
     var leftKey = parent.getKeySet().iterator().next();
     assertThat(leftKey.indexKey()).isEqualTo("200");
     ifDataNodeThenRun(leftKey.node(), (n) -> {
-      var dataRecordSet = n.getDataRecordSet();
+      var dataRecordSet = n.getKeyDataSet();
       assertThat(dataRecordSet).hasSize(1);
       assertThat(dataRecordSet).contains(dataRecord100);
     });
@@ -54,23 +54,23 @@ class DataNodeTest {
     var dataRecord500 = createDataRecord("500");
     var dataRecord600 = createDataRecord("600");
     var dataRecord700 = createDataRecord("700");
-    dataNode.add(dataRecord500);
-    dataNode.add(dataRecord600);
-    dataNode.add(dataRecord700);
+    dataNode.add(new KeyData("500", dataRecord500));
+    dataNode.add(new KeyData("600", dataRecord600));
+    dataNode.add(new KeyData("700", dataRecord700));
     var parent = dataNode.getParent();
     var parentKeySet = parent.getKeySet();
     assertThat(parentKeySet).hasSize(1);
     var firstKeyInParentKeySet = parentKeySet.iterator().next();
     assertThat(firstKeyInParentKeySet.node()).isInstanceOf(DataNode.class);
     if (firstKeyInParentKeySet.node() instanceof DataNode dataNodeChild) {
-      var dataRecordSet = dataNodeChild.getDataRecordSet();
+      var dataRecordSet = dataNodeChild.getKeyDataSet();
       assertThat(dataRecordSet).hasSize(1);
       var dataRecord450 = createDataRecord("450");
       var dataRecord400 = createDataRecord("400");
       var dataRecord300 = createDataRecord("300");
-      dataNodeChild.add(dataRecord400);
-      dataNodeChild.add(dataRecord300);
-      dataNodeChild.add(dataRecord450);
+      dataNodeChild.add(new KeyData("400", dataRecord400));
+      dataNodeChild.add(new KeyData("300", dataRecord300));
+      dataNodeChild.add(new KeyData("450", dataRecord450));
       assertThat(parent.getSize()).isEqualTo(2);
       assertThat(parent.getParent().getSize()).isEqualTo(2);
       assertThat(parentKeySet.stream().map(Key::indexKey).toList()).contains("600");
@@ -85,6 +85,6 @@ class DataNodeTest {
   }
 
   private DataRecord createDataRecord(Object number) {
-    return new DataRecord(number, number.toString().getBytes());
+    return new DataRecord(number.toString().getBytes());
   }
 }

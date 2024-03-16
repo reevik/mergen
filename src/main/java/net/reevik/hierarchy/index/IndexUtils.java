@@ -13,31 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package net.reevik.hierarchy.io;
+package net.reevik.hierarchy.index;
 
-import java.io.Closeable;
+import java.nio.ByteBuffer;
 
-public enum DiskManager implements Closeable {
-  DATA(new FileIO("Datafile")),
-  INDEX(new FileIO("Indexfile"));
-
-  DiskManager(FileIO file) {
-    this.file = file;
+public class IndexUtils {
+  public static byte[] getBytesOf(long totalRecordSize) {
+    var buffer = ByteBuffer.allocate(Long.BYTES);
+    buffer.putLong(totalRecordSize);
+    return buffer.array();
   }
 
-  private final FileIO file;
-
-  @Override
-  public void close() {
-    INDEX.close();
-    DATA.close();
-  }
-
-  public long append(byte[] buffer) {
-    return file.writeAt(buffer);
-  }
-
-  public long writeAt(byte[] buffer, long offset) {
-    return file.writeAt(buffer, offset);
+  public static int append(byte[] buffer, byte[] source, int start) {
+    System.arraycopy(source, 0, buffer, start, source.length);
+    return start + source.length;
   }
 }

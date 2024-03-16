@@ -18,21 +18,34 @@ package net.reevik.hierarchy.index;
 import static net.reevik.hierarchy.index.IndexUtils.append;
 import static net.reevik.hierarchy.index.IndexUtils.getBytesOf;
 
-import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class Key implements Comparable<Key> {
+public class KeyData implements Comparable<KeyData> {
 
   private final Object indexKey;
-  private final Node node;
+  private final DataRecord dataRecord;
 
-  public Key(Object indexKey, Node node) {
+  public KeyData(Object indexKey, DataRecord dataRecord) {
     this.indexKey = indexKey;
-    this.node = node;
+    this.dataRecord = dataRecord;
+  }
+
+  public byte[] getBytes() {
+    var dataRecordOffsetInBytes = getBytesOf(dataRecord.getOffset());
+    var indexKeyInBytes = indexKey.toString().getBytes();
+    int totalRecordSize = indexKeyInBytes.length;
+    totalRecordSize += dataRecordOffsetInBytes.length;
+    var totalRecordSizeInBytes = getBytesOf(totalRecordSize);
+    totalRecordSize += totalRecordSizeInBytes.length;
+    var payload = new byte[totalRecordSize];
+    int newStart = append(payload, totalRecordSizeInBytes, 0);
+    newStart = append(payload, dataRecordOffsetInBytes, newStart);
+    append(payload, indexKeyInBytes, newStart);
+    return payload;
   }
 
   @Override
-  public int compareTo(Key o) {
+  public int compareTo(KeyData o) {
     return indexKey.toString().compareTo(o.indexKey.toString());
   }
 
@@ -44,8 +57,8 @@ public class Key implements Comparable<Key> {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    Key key = (Key) o;
-    return Objects.equals(indexKey, key.indexKey);
+    KeyData keyData = (KeyData) o;
+    return Objects.equals(indexKey, keyData.indexKey);
   }
 
   @Override
@@ -55,30 +68,17 @@ public class Key implements Comparable<Key> {
 
   @Override
   public String toString() {
-    return "Key{" +
+    return "KeyData{" +
         "indexKey=" + indexKey +
+        ", dataRecord=" + dataRecord +
         '}';
   }
 
-  public Object indexKey() {
+  public Object getIndexKey() {
     return indexKey;
   }
 
-  public Node node() {
-    return node;
-  }
-
-  public byte[] getBytes() {
-    var nodeOffsetInBytes = getBytesOf(node.getOffset());
-    var indexKeyInBytes = indexKey.toString().getBytes();
-    int totalRecordSize = indexKeyInBytes.length;
-    totalRecordSize += nodeOffsetInBytes.length;
-    var totalRecordSizeInBytes = getBytesOf(totalRecordSize);
-    totalRecordSize += totalRecordSizeInBytes.length;
-    var payload = new byte[totalRecordSize];
-    int newStartPos = append(payload, totalRecordSizeInBytes, 0);
-    newStartPos = append(payload, nodeOffsetInBytes, newStartPos);
-    append(payload, nodeOffsetInBytes, newStartPos);
-    return payload;
+  public DataRecord getDataRecord() {
+    return dataRecord;
   }
 }

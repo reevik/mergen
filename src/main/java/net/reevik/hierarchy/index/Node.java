@@ -18,21 +18,20 @@ package net.reevik.hierarchy.index;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
+import net.reevik.hierarchy.io.SerializableObject;
 
-public abstract class Node {
+public abstract class Node implements SerializableObject {
   private final List<NodeObserver> nodeObservers = new LinkedList<>();
 
   private InnerNode parent;
 
   abstract Object firstIndexKey();
 
-  abstract void upsert(DataEntity record);
+  abstract void upsert(DataEntity entity);
 
-  abstract Set<DataRecord> query(String record);
+  abstract Set<DataRecord> query(String queryString);
 
-  abstract long getSize();
-
-  abstract long getOffset();
+  abstract int getSize();
 
   public InnerNode getParent() {
     return parent;

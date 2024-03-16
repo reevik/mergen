@@ -15,19 +15,26 @@
  */
 package net.reevik.hierarchy.index;
 
+import static net.reevik.hierarchy.index.IndexUtils.getBytesOf;
+
 import java.util.Set;
 import java.util.TreeSet;
+import net.reevik.hierarchy.io.DiskManager;
+import net.reevik.hierarchy.io.SerializableObject;
 
-public class DataNode extends Node {
-  private final TreeSet<DataRecord> dataRecordSet = new TreeSet<>();
+public class DataNode extends Node implements SerializableObject {
+
+  public static final long NON_EXISTING_OFFSET = -1L;
+  private final TreeSet<KeyData> keyDataSet = new TreeSet<>();
+  private long offset = -1;
 
   public void add(DataEntity dataEntity) {
-    add(new DataRecord(dataEntity.indexKey(), dataEntity.payload()));
+    add(new KeyData(dataEntity.indexKey(), new DataRecord(dataEntity.payload())));
   }
 
-  public void add(DataRecord dataRecord) {
-    dataRecordSet.add(dataRecord);
-    if (dataRecordSet.size() >= BTreeIndex.ORDER) {
+  public void add(KeyData dataRecord) {
+    keyDataSet.add(dataRecord);
+    if (keyDataSet.size() >= BTreeIndex.ORDER) {
       split();
     }
   }
@@ -48,7 +55,7 @@ public class DataNode extends Node {
   }
 
   private void removeItems(DataNode leftNode) {
-    dataRecordSet.removeAll(leftNode.dataRecordSet);
+    keyDataSet.removeAll(leftNode.keyDataSet);
   }
 
   // Splitting the existing node into two parts at the mid-point.
@@ -56,7 +63,7 @@ public class DataNode extends Node {
     var midPoint = getMidPoint();
     var leftNode = new DataNode();
     var c = 0;
-    for (var dataRecord : dataRecordSet) {
+    for (var dataRecord : keyDataSet) {
       if (++c < midPoint) {
         leftNode.add(dataRecord);
       } else {
@@ -67,12 +74,12 @@ public class DataNode extends Node {
   }
 
   public Key toRightMostKey() {
-    return new Key(dataRecordSet.iterator().next().getIndexKey(), this);
+    return new Key(keyDataSet.iterator().next().getIndexKey(), this);
   }
 
   private Key newLeftNodeKey(DataNode leftNode) {
     leftNode.setParent(getParent());
-    return new Key(dataRecordSet.iterator().next().getIndexKey(), leftNode);
+    return new Key(keyDataSet.iterator().next().getIndexKey(), leftNode);
   }
 
   private InnerNode newRoot() {
@@ -83,12 +90,12 @@ public class DataNode extends Node {
   }
 
   private int getMidPoint() {
-    return (int) Math.ceil(dataRecordSet.size() / 2.0d);
+    return (int) Math.ceil(keyDataSet.size() / 2.0d);
   }
 
   @Override
   Object firstIndexKey() {
-    return dataRecordSet.first().getIndexKey();
+    return keyDataSet.first().getIndexKey();
   }
 
   @Override
@@ -98,25 +105,54 @@ public class DataNode extends Node {
 
   @Override
   Set<DataRecord> query(String query) {
-    for (var dataRecord : dataRecordSet) {
-      if (dataRecord.getIndexKey().equals(query)) {
-        return Set.of(dataRecord);
+    for (var dataKey : keyDataSet) {
+      if (dataKey.getIndexKey().equals(query)) {
+        return Set.of(dataKey.getDataRecord());
       }
     }
     return Set.of();
   }
 
   @Override
-  long getSize() {
-    return dataRecordSet.size();
+  int getSize() {
+    return keyDataSet.size();
   }
 
   @Override
-  long getOffset() {
-    return dataRecordSet.first().offset();
+  public long getOffset() {
+    return offset;
   }
 
-  public Set<DataRecord> getDataRecordSet() {
-    return dataRecordSet;
+  public Set<KeyData> getKeyDataSet() {
+    return keyDataSet;
+  }
+
+  @Override
+  public byte[] getBytes() {
+    return new byte[0];
+  }
+
+  private byte[] getParentsInBytes(InnerNode parent) {
+    if (parent != null) {
+      return getBytesOf(parent.getOffset());
+    }
+    return getBytesOf(NON_EXISTING_OFFSET);
+  }
+
+
+  @Override
+  public void load() {
+    if (offset < 0) {
+      throw new IllegalStateException("The node haven't been persisted yet.");
+    }
+  }
+
+  @Override
+  public void persist() {
+    if (offset < 0) {
+      offset = DiskManager.INDEX.append(getBytes());
+    } else {
+      DiskManager.INDEX.writeAt(getBytes(), offset);
+    }
   }
 }

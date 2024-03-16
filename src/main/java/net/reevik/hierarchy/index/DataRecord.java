@@ -15,30 +15,20 @@
  */
 package net.reevik.hierarchy.index;
 
-import java.nio.ByteBuffer;
-import java.util.Objects;
+import static net.reevik.hierarchy.index.IndexUtils.append;
+import static net.reevik.hierarchy.index.IndexUtils.getBytesOf;
+
 import net.reevik.hierarchy.io.DiskManager;
 import net.reevik.hierarchy.io.SerializableObject;
 
-public class DataRecord implements Comparable<DataRecord>, SerializableObject {
-  private final Object indexKey;
+public class DataRecord implements SerializableObject {
+
   private final byte[] payload;
-  private final long offset;
+  private long offset;
 
-  public DataRecord(Object indexKey, byte[] payload) {
-    this.indexKey = indexKey;
+  public DataRecord(byte[] payload) {
     this.payload = payload;
-    this.offset = DiskManager.DATA.write(serialize());
-  }
-
-
-  @Override
-  public int compareTo(DataRecord o) {
-    return indexKey.toString().compareTo(o.indexKey.toString());
-  }
-
-  public Object getIndexKey() {
-    return indexKey;
+    persist();
   }
 
   public byte[] getPayload() {
@@ -46,51 +36,31 @@ public class DataRecord implements Comparable<DataRecord>, SerializableObject {
   }
 
   @Override
-  public long offset() {
+  public long getOffset() {
     return offset;
   }
 
   @Override
-  public byte[] serialize() {
-    var indexKeyInBytes = indexKey.toString().getBytes();
-    var totalRecordSize = indexKeyInBytes.length + payload.length;
+  public byte[] getBytes() {
+    var totalRecordSize = payload.length;
     byte[] totalRecordSizeInBytes = getBytesOf(totalRecordSize);
     byte[] byteRepresentation = new byte[totalRecordSizeInBytes.length + totalRecordSize];
-
-    System.arraycopy(totalRecordSizeInBytes, 0, byteRepresentation, 0,
-        totalRecordSizeInBytes.length);
-    System.arraycopy(indexKeyInBytes, 0, byteRepresentation, totalRecordSizeInBytes.length,
-        indexKeyInBytes.length);
-    System.arraycopy(payload, 0, byteRepresentation, indexKeyInBytes.length, payload.length);
-
+    int newStartPos = append(byteRepresentation, totalRecordSizeInBytes, 0);
+    append(byteRepresentation, payload, newStartPos);
     return byteRepresentation;
   }
 
-  private static byte[] getBytesOf(long totalRecordSize) {
-    var buffer = ByteBuffer.allocate(Long.BYTES);
-    buffer.putLong(totalRecordSize);
-    return buffer.array();
+  @Override
+  public void load() {
   }
 
   @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    DataRecord that = (DataRecord) o;
-    return Objects.equals(indexKey, that.indexKey);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(indexKey);
+  public void persist() {
+    offset = DiskManager.DATA.append(getBytes());
   }
 
   @Override
   public String toString() {
-    return "DataRecord{" + "indexKey=" + indexKey + '}';
+    return "DataRecord{" + "payload=" + new String(payload) + '}';
   }
 }

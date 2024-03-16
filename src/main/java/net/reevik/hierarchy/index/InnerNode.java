@@ -23,6 +23,7 @@ public class InnerNode extends Node implements SerializableObject {
 
   private final TreeSet<Key> keySet = new TreeSet<>();
   private Key rightMost;
+  private long offset = -1;
 
   public void upsert(DataEntity dataEntity) {
     var indexKeyAsStr = dataEntity.indexKey().toString();
@@ -46,7 +47,7 @@ public class InnerNode extends Node implements SerializableObject {
   }
 
   void add(Key key) {
-    if (key.isRightMost()) {
+    if (isRightMost(key)) {
       rightMost = key;
     } else {
       keySet.add(key);
@@ -56,6 +57,10 @@ public class InnerNode extends Node implements SerializableObject {
     if (totalSize > BTreeIndex.ORDER) {
       split();
     }
+  }
+
+  boolean isRightMost(Key key) {
+    return key.indexKey().toString().compareTo(key.node().firstIndexKey().toString()) <= 0;
   }
 
   private int getTotalSize() {
@@ -131,13 +136,8 @@ public class InnerNode extends Node implements SerializableObject {
   }
 
   @Override
-  long getSize() {
+  int getSize() {
     return getTotalSize();
-  }
-
-  @Override
-  long getOffset() {
-    return keySet.getFirst().getOffset();
   }
 
   public Set<Key> getKeySet() {
@@ -153,12 +153,23 @@ public class InnerNode extends Node implements SerializableObject {
   }
 
   @Override
-  public long offset() {
-    return 0;
+  public long getOffset() {
+    return offset;
   }
 
   @Override
-  public byte[] serialize() {
+  public byte[] getBytes() {
+
     return new byte[0];
+  }
+
+  @Override
+  public void load() {
+
+  }
+
+  @Override
+  public void persist() {
+
   }
 }
