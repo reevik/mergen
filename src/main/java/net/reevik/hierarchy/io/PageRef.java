@@ -15,9 +15,6 @@
  */
 package net.reevik.hierarchy.io;
 
-public interface SerializableObject {
+public record PageRef(long pageOffset, long nodeIndex) {
 
-  long getPageOffset();
-
-  void load();
 }

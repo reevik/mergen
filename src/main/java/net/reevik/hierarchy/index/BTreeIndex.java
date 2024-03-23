@@ -29,11 +29,11 @@ public class BTreeIndex implements NodeObserver {
       root = new DataNode();
       root.registerObserver(this);
     }
-    root.upsert(dataEntity);
+    root._upsert(dataEntity);
   }
 
   public Set<DataRecord> query(String indexKey) {
-    return root.query(indexKey);
+    return root._query(indexKey);
   }
 
   @Override

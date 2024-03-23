@@ -13,11 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package net.reevik.hierarchy.io;
+package net.reevik.hierarchy.index;
 
-public interface SerializableObject {
-
-  long getPageOffset();
-
-  void load();
+public enum NodeState {
+  NEW,
+  DIRTY,
+  UNLOADED,
+  SYNCED,
 }

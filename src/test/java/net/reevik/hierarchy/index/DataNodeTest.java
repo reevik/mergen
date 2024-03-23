@@ -71,8 +71,8 @@ class DataNodeTest {
       dataNodeChild.add(new KeyData("400", dataRecord400));
       dataNodeChild.add(new KeyData("300", dataRecord300));
       dataNodeChild.add(new KeyData("450", dataRecord450));
-      assertThat(parent.getSize()).isEqualTo(2);
-      assertThat(parent.getParent().getSize()).isEqualTo(2);
+      assertThat(parent._getSize()).isEqualTo(2);
+      assertThat(parent.getParent()._getSize()).isEqualTo(2);
       assertThat(parentKeySet.stream().map(Key::indexKey).toList()).contains("600");
     }
   }

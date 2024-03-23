@@ -15,6 +15,8 @@
  */
 package net.reevik.hierarchy.index;
 
+import static net.reevik.hierarchy.index.NodeState.NEW;
+
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
@@ -22,16 +24,46 @@ import net.reevik.hierarchy.io.SerializableObject;
 
 public abstract class Node implements SerializableObject {
   private final List<NodeObserver> nodeObservers = new LinkedList<>();
-
   private InnerNode parent;
+  private long pageOffset = -1;
+  private NodeState nodeState;
 
-  abstract Object firstIndexKey();
+  protected Node(long pageOffset) {
+    this.pageOffset = pageOffset;
+    this.nodeState = NodeState.UNLOADED;
+  }
 
-  abstract void upsert(DataEntity entity);
+  protected Node() {
+    this.nodeState = NEW;
+  }
 
-  abstract Set<DataRecord> query(String queryString);
+  Object firstIndexKey() {
+    load();
+    return _firstIndexKey();
+  }
 
-  abstract int getSize();
+  abstract Object _firstIndexKey();
+
+  void upsert(DataEntity entity) {
+    load();
+    _upsert(entity);
+  }
+
+  abstract void _upsert(DataEntity entity);
+
+  Set<DataRecord> query(String queryString) {
+    load();
+    return _query(queryString);
+  }
+
+  abstract Set<DataRecord> _query(String queryString);
+
+  int getSize() {
+    load();
+    return _getSize();
+  }
+
+  abstract int _getSize();
 
   public InnerNode getParent() {
     return parent;
@@ -59,5 +91,9 @@ public abstract class Node implements SerializableObject {
 
   public List<NodeObserver> getNodeObservers() {
     return nodeObservers;
+  }
+
+  public long getPageOffset() {
+    return pageOffset;
   }
 }

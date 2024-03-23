@@ -15,35 +15,44 @@
  */
 package net.reevik.hierarchy.index;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Iterator;
 import java.util.Set;
 import java.util.TreeSet;
 import net.reevik.hierarchy.io.SerializableObject;
 
-public class InnerNode extends Node implements SerializableObject {
-
+public class InnerNode extends Node implements SerializableObject, Iterable<Key> {
   private final TreeSet<Key> keySet = new TreeSet<>();
   private Key rightMost;
-  private long offset = -1;
 
-  public void upsert(DataEntity dataEntity) {
+  public InnerNode(long pageOffset) {
+    super(pageOffset);
+  }
+
+  public InnerNode() {
+    super(-1L);
+  }
+
+  public void _upsert(DataEntity dataEntity) {
     var indexKeyAsStr = dataEntity.indexKey().toString();
     for (var key : keySet) {
       if (indexKeyAsStr.compareTo(key.indexKey().toString()) <= 0) {
-        key.node().upsert(dataEntity);
+        key.node()._upsert(dataEntity);
         return;
       }
     }
-    rightMost.node().upsert(dataEntity);
+    rightMost.node()._upsert(dataEntity);
   }
 
   @Override
-  Set<DataRecord> query(String dataRecord) {
+  Set<DataRecord> _query(String dataRecord) {
     for (var key : keySet) {
       if (dataRecord.compareTo(key.indexKey().toString()) < 0) {
-        return key.node().query(dataRecord);
+        return key.node()._query(dataRecord);
       }
     }
-    return rightMost.node().query(dataRecord);
+    return rightMost.node()._query(dataRecord);
   }
 
   void add(Key key) {
@@ -131,12 +140,12 @@ public class InnerNode extends Node implements SerializableObject {
   }
 
   @Override
-  Object firstIndexKey() {
+  Object _firstIndexKey() {
     return keySet.first().indexKey();
   }
 
   @Override
-  int getSize() {
+  int _getSize() {
     return getTotalSize();
   }
 
@@ -153,23 +162,13 @@ public class InnerNode extends Node implements SerializableObject {
   }
 
   @Override
-  public long getOffset() {
-    return offset;
-  }
-
-  @Override
-  public byte[] getBytes() {
-
-    return new byte[0];
-  }
-
-  @Override
   public void load() {
-
   }
 
   @Override
-  public void persist() {
-
+  public Iterator<Key> iterator() {
+    var listView = new ArrayList<>(Arrays.asList(keySet.toArray(new Key[keySet.size()])));
+    listView.add(rightMost);
+    return listView.iterator();
   }
 }

@@ -18,7 +18,6 @@ package net.reevik.hierarchy.index;
 import static net.reevik.hierarchy.index.IndexUtils.append;
 import static net.reevik.hierarchy.index.IndexUtils.getBytesOf;
 
-import net.reevik.hierarchy.io.DiskManager;
 import net.reevik.hierarchy.io.SerializableObject;
 
 public class DataRecord implements SerializableObject {
@@ -28,7 +27,6 @@ public class DataRecord implements SerializableObject {
 
   public DataRecord(byte[] payload) {
     this.payload = payload;
-    persist();
   }
 
   public byte[] getPayload() {
@@ -36,11 +34,10 @@ public class DataRecord implements SerializableObject {
   }
 
   @Override
-  public long getOffset() {
-    return offset;
+  public long getPageOffset() {
+    return 0;
   }
 
-  @Override
   public byte[] getBytes() {
     var totalRecordSize = payload.length;
     byte[] totalRecordSizeInBytes = getBytesOf(totalRecordSize);
@@ -52,11 +49,7 @@ public class DataRecord implements SerializableObject {
 
   @Override
   public void load() {
-  }
 
-  @Override
-  public void persist() {
-    offset = DiskManager.DATA.append(getBytes());
   }
 
   @Override

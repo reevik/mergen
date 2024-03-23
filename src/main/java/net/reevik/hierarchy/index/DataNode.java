@@ -15,18 +15,13 @@
  */
 package net.reevik.hierarchy.index;
 
-import static net.reevik.hierarchy.index.IndexUtils.getBytesOf;
-
+import java.util.Iterator;
 import java.util.Set;
 import java.util.TreeSet;
-import net.reevik.hierarchy.io.DiskManager;
 import net.reevik.hierarchy.io.SerializableObject;
 
-public class DataNode extends Node implements SerializableObject {
-
-  public static final long NON_EXISTING_OFFSET = -1L;
+public class DataNode extends Node implements SerializableObject, Iterable<KeyData> {
   private final TreeSet<KeyData> keyDataSet = new TreeSet<>();
-  private long offset = -1;
 
   public void add(DataEntity dataEntity) {
     add(new KeyData(dataEntity.indexKey(), new DataRecord(dataEntity.payload())));
@@ -94,17 +89,17 @@ public class DataNode extends Node implements SerializableObject {
   }
 
   @Override
-  Object firstIndexKey() {
+  Object _firstIndexKey() {
     return keyDataSet.first().getIndexKey();
   }
 
   @Override
-  void upsert(DataEntity dataEntity) {
+  void _upsert(DataEntity dataEntity) {
     add(dataEntity);
   }
 
   @Override
-  Set<DataRecord> query(String query) {
+  Set<DataRecord> _query(String query) {
     for (var dataKey : keyDataSet) {
       if (dataKey.getIndexKey().equals(query)) {
         return Set.of(dataKey.getDataRecord());
@@ -114,13 +109,8 @@ public class DataNode extends Node implements SerializableObject {
   }
 
   @Override
-  int getSize() {
+  int _getSize() {
     return keyDataSet.size();
-  }
-
-  @Override
-  public long getOffset() {
-    return offset;
   }
 
   public Set<KeyData> getKeyDataSet() {
@@ -128,31 +118,11 @@ public class DataNode extends Node implements SerializableObject {
   }
 
   @Override
-  public byte[] getBytes() {
-    return new byte[0];
-  }
-
-  private byte[] getParentsInBytes(InnerNode parent) {
-    if (parent != null) {
-      return getBytesOf(parent.getOffset());
-    }
-    return getBytesOf(NON_EXISTING_OFFSET);
-  }
-
-
-  @Override
   public void load() {
-    if (offset < 0) {
-      throw new IllegalStateException("The node haven't been persisted yet.");
-    }
   }
 
   @Override
-  public void persist() {
-    if (offset < 0) {
-      offset = DiskManager.INDEX.append(getBytes());
-    } else {
-      DiskManager.INDEX.writeAt(getBytes(), offset);
-    }
+  public Iterator<KeyData> iterator() {
+    return keyDataSet.iterator();
   }
 }

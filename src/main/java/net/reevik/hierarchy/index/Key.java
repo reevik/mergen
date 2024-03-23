@@ -69,7 +69,7 @@ public class Key implements Comparable<Key> {
   }
 
   public byte[] getBytes() {
-    var nodeOffsetInBytes = getBytesOf(node.getOffset());
+    var nodeOffsetInBytes = getBytesOf(node.getPageOffset());
     var indexKeyInBytes = indexKey.toString().getBytes();
     int totalRecordSize = indexKeyInBytes.length;
     totalRecordSize += nodeOffsetInBytes.length;

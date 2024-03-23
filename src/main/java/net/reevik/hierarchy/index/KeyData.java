@@ -19,6 +19,7 @@ import static net.reevik.hierarchy.index.IndexUtils.append;
 import static net.reevik.hierarchy.index.IndexUtils.getBytesOf;
 
 import java.util.Objects;
+import net.reevik.hierarchy.io.ByteView;
 
 public class KeyData implements Comparable<KeyData> {
 
@@ -30,18 +31,15 @@ public class KeyData implements Comparable<KeyData> {
     this.dataRecord = dataRecord;
   }
 
-  public byte[] getBytes() {
-    var dataRecordOffsetInBytes = getBytesOf(dataRecord.getOffset());
+  public ByteView toByteView() {
+    var dataRecordPtr = getBytesOf(dataRecord.getPageOffset());
     var indexKeyInBytes = indexKey.toString().getBytes();
-    int totalRecordSize = indexKeyInBytes.length;
-    totalRecordSize += dataRecordOffsetInBytes.length;
-    var totalRecordSizeInBytes = getBytesOf(totalRecordSize);
-    totalRecordSize += totalRecordSizeInBytes.length;
+    var totalRecordSize = indexKeyInBytes.length;
+    totalRecordSize += dataRecordPtr.length;
     var payload = new byte[totalRecordSize];
-    int newStart = append(payload, totalRecordSizeInBytes, 0);
-    newStart = append(payload, dataRecordOffsetInBytes, newStart);
+    var newStart = append(payload, dataRecordPtr, 0);
     append(payload, indexKeyInBytes, newStart);
-    return payload;
+    return new ByteView(totalRecordSize, payload);
   }
 
   @Override

@@ -18,14 +18,32 @@ package net.reevik.hierarchy.index;
 import java.nio.ByteBuffer;
 
 public class IndexUtils {
-  public static byte[] getBytesOf(long totalRecordSize) {
+
+  public static byte[] getBytesOf(long total) {
     var buffer = ByteBuffer.allocate(Long.BYTES);
-    buffer.putLong(totalRecordSize);
+    buffer.putLong(total);
+    return buffer.array();
+  }
+
+  public static byte[] getBytesOf(short value) {
+    var buffer = ByteBuffer.allocate(Short.BYTES);
+    buffer.putShort(value);
+    return buffer.array();
+  }
+
+  public static byte[] getBytesOf(int value) {
+    var buffer = ByteBuffer.allocate(Integer.BYTES);
+    buffer.putInt(value);
     return buffer.array();
   }
 
   public static int append(byte[] buffer, byte[] source, int start) {
     System.arraycopy(source, 0, buffer, start, source.length);
     return start + source.length;
+  }
+
+  public static int appendBackward(byte[] buffer, byte[] source, int start) {
+    System.arraycopy(source, 0, buffer, start, source.length);
+    return start - source.length;
   }
 }

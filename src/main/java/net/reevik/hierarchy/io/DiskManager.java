@@ -16,6 +16,7 @@
 package net.reevik.hierarchy.io;
 
 import java.io.Closeable;
+import net.reevik.hierarchy.index.DataNode;
 
 public enum DiskManager implements Closeable {
   DATA(new FileIO("Datafile")),

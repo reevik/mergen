@@ -15,9 +15,6 @@
  */
 package net.reevik.hierarchy.io;
 
-public interface SerializableObject {
+public record ByteView(int size, byte[] payload) {
 
-  long getPageOffset();
-
-  void load();
 }
