@@ -18,28 +18,39 @@ package net.reevik.hierarchy.index;
 import static net.reevik.hierarchy.index.IndexUtils.append;
 import static net.reevik.hierarchy.index.IndexUtils.getBytesOf;
 
+import net.reevik.hierarchy.io.PageRef;
 import net.reevik.hierarchy.io.SerializableObject;
 
-public class DataRecord implements SerializableObject {
+public class DataRecord extends SerializableObject {
+  private byte[] payload = new byte[0];
+  private int size;
 
-  private final byte[] payload;
-  private long offset;
+  public DataRecord(byte[] payload, PageRef pageRef) {
+    super(pageRef);
+    this.payload = payload;
+    markSynced();
+  }
+
+  public DataRecord(PageRef pageRef) {
+    super(pageRef);
+    markUnsynced();
+  }
 
   public DataRecord(byte[] payload) {
+    super(new PageRef(-1));
     this.payload = payload;
+    markDirty();
   }
 
   public byte[] getPayload() {
+    if (isUnsynced()) {
+      load();
+    }
     return payload;
   }
 
-  @Override
-  public long getPageOffset() {
-    return 0;
-  }
-
   public byte[] getBytes() {
-    var totalRecordSize = payload.length;
+    var totalRecordSize = getPayload().length;
     byte[] totalRecordSizeInBytes = getBytesOf(totalRecordSize);
     byte[] byteRepresentation = new byte[totalRecordSizeInBytes.length + totalRecordSize];
     int newStartPos = append(byteRepresentation, totalRecordSizeInBytes, 0);
@@ -49,11 +60,41 @@ public class DataRecord implements SerializableObject {
 
   @Override
   public void load() {
+    markSynced();
+  }
 
+  @Override
+  public long persist() {
+    markSynced();
+    return 0;
   }
 
   @Override
   public String toString() {
     return "DataRecord{" + "payload=" + new String(payload) + '}';
+  }
+
+  public static DataRecord createUnloaded(PageRef ref) {
+    var dataRecord = new DataRecord(ref);
+    dataRecord.markUnsynced();
+    return dataRecord;
+  }
+
+  public static DataRecord createSynced(PageRef ref, byte[] payload) {
+    var dataRecord = new DataRecord(payload, ref);
+    dataRecord.markSynced();
+    return dataRecord;
+  }
+
+  public static DataRecord createNew(DataEntity dataEntity) {
+    var dataRecord = new DataRecord(dataEntity.payload());
+    dataRecord.markDirty();
+    return dataRecord;
+  }
+
+  public static DataRecord createNew(byte[] entityPayload) {
+    var dataRecord = new DataRecord(entityPayload);
+    dataRecord.markDirty();
+    return dataRecord;
   }
 }

@@ -15,6 +15,19 @@
  */
 package net.reevik.hierarchy.io;
 
-public record PageRef(long pageOffset, long nodeIndex) {
+import static net.reevik.hierarchy.index.IndexUtils.getBytesOf;
 
+public record PageRef(long pageOffset) {
+
+  public static PageRef empty() {
+    return new PageRef(-1L);
+  }
+
+  public static PageRef of(long offset) {
+    return new PageRef(offset);
+  }
+
+  byte[] toBytes() {
+    return getBytesOf(pageOffset);
+  }
 }

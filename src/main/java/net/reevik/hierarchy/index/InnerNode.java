@@ -20,18 +20,18 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.TreeSet;
-import net.reevik.hierarchy.io.SerializableObject;
+import net.reevik.hierarchy.io.PageRef;
 
-public class InnerNode extends Node implements SerializableObject, Iterable<Key> {
+public class InnerNode extends Node implements Iterable<Key> {
   private final TreeSet<Key> keySet = new TreeSet<>();
   private Key rightMost;
 
-  public InnerNode(long pageOffset) {
-    super(pageOffset);
+  public InnerNode(PageRef pageRef) {
+    super(pageRef);
   }
 
   public InnerNode() {
-    super(-1L);
+    super(PageRef.empty());
   }
 
   public void _upsert(DataEntity dataEntity) {
@@ -163,6 +163,11 @@ public class InnerNode extends Node implements SerializableObject, Iterable<Key>
 
   @Override
   public void load() {
+  }
+
+  @Override
+  public long persist() {
+    return 0;
   }
 
   @Override

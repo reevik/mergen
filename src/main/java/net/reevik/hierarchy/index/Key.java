@@ -18,7 +18,6 @@ package net.reevik.hierarchy.index;
 import static net.reevik.hierarchy.index.IndexUtils.append;
 import static net.reevik.hierarchy.index.IndexUtils.getBytesOf;
 
-import java.nio.ByteBuffer;
 import java.util.Objects;
 
 public class Key implements Comparable<Key> {
@@ -69,7 +68,7 @@ public class Key implements Comparable<Key> {
   }
 
   public byte[] getBytes() {
-    var nodeOffsetInBytes = getBytesOf(node.getPageOffset());
+    var nodeOffsetInBytes = getBytesOf(node.getPageRef().pageOffset());
     var indexKeyInBytes = indexKey.toString().getBytes();
     int totalRecordSize = indexKeyInBytes.length;
     totalRecordSize += nodeOffsetInBytes.length;

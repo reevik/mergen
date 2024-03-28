@@ -15,31 +15,36 @@
  */
 package net.reevik.hierarchy.index;
 
-import static net.reevik.hierarchy.index.IndexUtils.append;
-import static net.reevik.hierarchy.index.IndexUtils.getBytesOf;
+import static net.reevik.hierarchy.index.DataRecord.createUnloaded;
+import static net.reevik.hierarchy.index.IndexUtils.bytesToLong;
 
+import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Objects;
-import net.reevik.hierarchy.io.ByteView;
+import net.reevik.hierarchy.io.PageRef;
 
 public class KeyData implements Comparable<KeyData> {
 
   private final Object indexKey;
   private final DataRecord dataRecord;
 
+  public static KeyData from(byte[] buffer) {
+    var dataRecordOffset = Arrays.copyOfRange(buffer, 0, Long.BYTES);
+    var indexKeyInStr = new String(Arrays.copyOfRange(buffer, Long.BYTES, buffer.length));
+    return new KeyData(indexKeyInStr, createUnloaded(new PageRef(bytesToLong(dataRecordOffset))));
+  }
+
   public KeyData(Object indexKey, DataRecord dataRecord) {
     this.indexKey = indexKey;
     this.dataRecord = dataRecord;
   }
 
-  public ByteView toByteView() {
-    var dataRecordPtr = getBytesOf(dataRecord.getPageOffset());
-    var indexKeyInBytes = indexKey.toString().getBytes();
-    var totalRecordSize = indexKeyInBytes.length;
-    totalRecordSize += dataRecordPtr.length;
-    var payload = new byte[totalRecordSize];
-    var newStart = append(payload, dataRecordPtr, 0);
-    append(payload, indexKeyInBytes, newStart);
-    return new ByteView(totalRecordSize, payload);
+  public ByteBuffer toByteBuffer() {
+    byte[] indexKeyInBytes = indexKey.toString().getBytes();
+    ByteBuffer buffer = ByteBuffer.allocate(indexKeyInBytes.length + Long.BYTES);
+    buffer.putLong(dataRecord.getPageRef().pageOffset());
+    buffer.put(indexKeyInBytes);
+    return buffer;
   }
 
   @Override
@@ -66,10 +71,7 @@ public class KeyData implements Comparable<KeyData> {
 
   @Override
   public String toString() {
-    return "KeyData{" +
-        "indexKey=" + indexKey +
-        ", dataRecord=" + dataRecord +
-        '}';
+    return "KeyData{" + "indexKey=" + indexKey + ", dataRecord=" + dataRecord + '}';
   }
 
   public Object getIndexKey() {

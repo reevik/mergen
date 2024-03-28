@@ -19,6 +19,27 @@ import java.nio.ByteBuffer;
 
 public class IndexUtils {
 
+  public static long bytesToLong(byte[] bytes) {
+    ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
+    buffer.put(bytes);
+    buffer.flip();
+    return buffer.getLong();
+  }
+
+  public static short bytesToShort(byte[] bytes) {
+    ByteBuffer buffer = ByteBuffer.allocate(Short.BYTES);
+    buffer.put(bytes);
+    buffer.flip();
+    return buffer.getShort();
+  }
+
+  public static int bytesToInt(byte[] bytes) {
+    ByteBuffer buffer = ByteBuffer.allocate(Integer.BYTES);
+    buffer.put(bytes);
+    buffer.flip();
+    return buffer.getInt();
+  }
+
   public static byte[] getBytesOf(long total) {
     var buffer = ByteBuffer.allocate(Long.BYTES);
     buffer.putLong(total);

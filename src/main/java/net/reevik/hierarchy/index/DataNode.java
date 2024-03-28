@@ -15,16 +15,27 @@
  */
 package net.reevik.hierarchy.index;
 
+import static net.reevik.hierarchy.index.DataRecord.createNew;
+
 import java.util.Iterator;
 import java.util.Set;
 import java.util.TreeSet;
-import net.reevik.hierarchy.io.SerializableObject;
+import net.reevik.hierarchy.io.PageRef;
 
-public class DataNode extends Node implements SerializableObject, Iterable<KeyData> {
+public class DataNode extends Node implements Iterable<KeyData> {
+
   private final TreeSet<KeyData> keyDataSet = new TreeSet<>();
 
+  public DataNode(PageRef pageRef) {
+    super(pageRef);
+  }
+
+  public DataNode() {
+    super(PageRef.empty());
+  }
+
   public void add(DataEntity dataEntity) {
-    add(new KeyData(dataEntity.indexKey(), new DataRecord(dataEntity.payload())));
+    add(new KeyData(dataEntity.indexKey(), createNew(dataEntity)));
   }
 
   public void add(KeyData dataRecord) {
@@ -122,7 +133,16 @@ public class DataNode extends Node implements SerializableObject, Iterable<KeyDa
   }
 
   @Override
+  public long persist() {
+    return 0;
+  }
+
+  @Override
   public Iterator<KeyData> iterator() {
     return keyDataSet.iterator();
+  }
+
+  public boolean contains(KeyData keyData) {
+    return keyDataSet.contains(keyData);
   }
 }

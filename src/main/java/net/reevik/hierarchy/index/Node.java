@@ -15,26 +15,25 @@
  */
 package net.reevik.hierarchy.index;
 
-import static net.reevik.hierarchy.index.NodeState.NEW;
-
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
+import net.reevik.hierarchy.io.PageRef;
 import net.reevik.hierarchy.io.SerializableObject;
 
-public abstract class Node implements SerializableObject {
+public abstract class Node extends SerializableObject {
+
   private final List<NodeObserver> nodeObservers = new LinkedList<>();
   private InnerNode parent;
-  private long pageOffset = -1;
-  private NodeState nodeState;
 
-  protected Node(long pageOffset) {
-    this.pageOffset = pageOffset;
-    this.nodeState = NodeState.UNLOADED;
+  protected Node(PageRef pageRef) {
+    super(pageRef);
+    markUnsynced();
   }
 
   protected Node() {
-    this.nodeState = NEW;
+    super(new PageRef(-1));
+    markDirty();
   }
 
   Object firstIndexKey() {
@@ -93,7 +92,10 @@ public abstract class Node implements SerializableObject {
     return nodeObservers;
   }
 
-  public long getPageOffset() {
-    return pageOffset;
+  public PageRef getParentPageOffset() {
+    if (hasParent()) {
+      return getParent().getPageRef();
+    }
+    return new PageRef(-1);
   }
 }

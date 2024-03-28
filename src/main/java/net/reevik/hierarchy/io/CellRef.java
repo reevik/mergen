@@ -13,11 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package net.reevik.hierarchy.index;
+package net.reevik.hierarchy.io;
 
-public enum NodeState {
-  NEW,
-  DIRTY,
-  UNLOADED,
-  SYNCED,
+import static net.reevik.hierarchy.index.IndexUtils.append;
+import static net.reevik.hierarchy.index.IndexUtils.getBytesOf;
+
+public record CellRef(int offset, int size) {
+
+  byte[] toBytes() {
+    byte[] bytesOffset = getBytesOf(offset);
+    byte[] bytesSize = getBytesOf(size);
+    var result = new byte[2 * Integer.BYTES];
+    append(result, bytesOffset, 0);
+    append(result, bytesSize, Integer.BYTES);
+    return result;
+  }
 }

@@ -15,9 +15,53 @@
  */
 package net.reevik.hierarchy.io;
 
-public interface SerializableObject {
+import static net.reevik.hierarchy.index.SyncState.DIRTY;
+import static net.reevik.hierarchy.index.SyncState.SYNCED;
+import static net.reevik.hierarchy.index.SyncState.UNSYNCED;
 
-  long getPageOffset();
+import net.reevik.hierarchy.index.SyncState;
 
-  void load();
+public abstract class SerializableObject {
+
+  private SyncState syncState;
+  private PageRef pageRef;
+
+  public SerializableObject(PageRef pageRef) {
+    this.pageRef = pageRef;
+  }
+
+  public void markDirty() {
+    syncState = DIRTY;
+  }
+
+  public void markSynced() {
+    syncState = SYNCED;
+  }
+
+  public void markUnsynced() {
+    syncState = UNSYNCED;
+  }
+
+  public boolean isUnsynced() {
+    return syncState == UNSYNCED;
+  }
+
+  public boolean isSynced() {
+    return syncState == SYNCED;
+  }
+
+  public boolean isDirty() {
+    return syncState == DIRTY;
+  }
+
+  public PageRef getPageRef() {
+    if (isUnsynced()) {
+      load();
+    }
+    return pageRef;
+  }
+
+  public abstract void load();
+
+  public abstract long persist();
 }

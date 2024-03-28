@@ -13,35 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package net.reevik.hierarchy.io;
+package net.reevik.hierarchy.index;
 
-import java.io.Closeable;
+public enum SyncState {
 
-public enum DiskManager implements Closeable {
-  DATA(new FileIO("Datafile")),
-  INDEX(new FileIO("Indexfile"));
+  /**
+   * There are update(s) in the memory representation but the changes not yet committed.
+   * <p>
+   */
+  DIRTY,
 
-  DiskManager(FileIO file) {
-    this.file = file;
-  }
+  /**
+   * The data hasn't been fetched from the disk into memory for an offset provided.
+   * <p>
+   */
+  UNSYNCED,
 
-  private final FileIO file;
-
-  @Override
-  public void close() {
-    INDEX.close();
-    DATA.close();
-  }
-
-  public long append(byte[] buffer) {
-    return file.writeAt(buffer);
-  }
-
-  public byte[] read(int offset, int size) {
-    return file.readBytes(offset, size);
-  }
-
-  public long writeAt(byte[] buffer, long offset) {
-    return file.writeAt(buffer, offset);
-  }
+  /**
+   * Changes persisted to the file.
+   * <p>
+   */
+  SYNCED,
 }

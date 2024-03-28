@@ -25,6 +25,8 @@ import java.nio.channels.FileChannel;
 
 public class FileIO implements Closeable {
 
+  public static final int PAGE_SIZE = 1024 * 16;
+
   private final String fileName;
   private RandomAccessFile randomAccessFile;
   private FileChannel channel;
@@ -74,10 +76,15 @@ public class FileIO implements Closeable {
     }
   }
 
-  public byte[] read(int offset, int size) {
+  public Page readPage(PageRef ref) {
+    byte[] pageInBytes = readBytes(ref.pageOffset(), PAGE_SIZE);
+    return new Page(pageInBytes);
+  }
+
+  public byte[] readBytes(long pageOffset, int pageSize) {
     try (var out = new ByteArrayOutputStream()) {
-      channel.position(offset);
-      var bufferSize = size;
+      channel.position(pageOffset);
+      var bufferSize = pageSize;
       if (bufferSize > channel.size()) {
         bufferSize = (int) channel.size();
       }
@@ -86,7 +93,6 @@ public class FileIO implements Closeable {
         out.write(buffer.array(), 0, buffer.position());
         buffer.clear();
       }
-
       return out.toByteArray();
     } catch (IOException e) {
       throw new RuntimeException(e);
