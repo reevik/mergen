@@ -16,6 +16,7 @@
 package net.reevik.hierarchy.io;
 
 import static net.reevik.hierarchy.index.DataRecord.createNew;
+import static net.reevik.hierarchy.index.DataRecord.createSynced;
 import static net.reevik.hierarchy.io.FileIO.PAGE_SIZE;
 import static org.assertj.core.api.Assertions.assertThat;
 

@@ -16,6 +16,9 @@
 package net.reevik.hierarchy.io;
 
 import static java.util.Arrays.copyOfRange;
+import static net.reevik.hierarchy.index.DataRecord.createSynced;
+import static net.reevik.hierarchy.index.DataRecord.createUnloaded;
+import static net.reevik.hierarchy.index.IndexUtils.bytesToLong;
 import static net.reevik.hierarchy.io.FileIO.PAGE_SIZE;
 
 import java.nio.ByteBuffer;
@@ -85,14 +88,14 @@ public class Page {
   private int cellCount = 0;
   private final ByteBuffer pageBuffer;
 
-  public Page(DataNode entity) {
+  public Page(DataNode dataNode) {
     this.pageBuffer = ByteBuffer.allocate(PAGE_SIZE);
     this.pageSize = PAGE_SIZE;
     this.pageType = PageType.DATA_NODE;
-    this.parentPageRef = entity.getParentPageOffset();
+    this.parentPageRef = dataNode.getParentPageOffset();
     this.siblingOffset = -1;
-    this.pageRef = entity.getPageRef();
-    serialize(entity);
+    this.pageRef = dataNode.getPageRef();
+    serialize(dataNode);
   }
 
   public Page(byte[] buffer) {
@@ -104,7 +107,10 @@ public class Page {
     var sizes = readHeader();
     var entity = new DataNode(parentPageRef);
     entity.setParent(new InnerNode(parentPageRef)); // TODO
-    sizes.stream().map(this::read).map(KeyData::from).forEach(entity::add);
+    sizes.stream()
+        .map(this::read)
+        .map(KeyData::from)
+        .forEach(entity::add);
     return entity;
   }
 

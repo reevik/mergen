@@ -15,12 +15,12 @@
  */
 package net.reevik.hierarchy.index;
 
-import static net.reevik.hierarchy.index.DataRecord.createUnloaded;
 import static net.reevik.hierarchy.index.IndexUtils.bytesToLong;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.function.Function;
 import net.reevik.hierarchy.io.PageRef;
 
 public class KeyData implements Comparable<KeyData> {
@@ -31,7 +31,9 @@ public class KeyData implements Comparable<KeyData> {
   public static KeyData from(byte[] buffer) {
     var dataRecordOffset = Arrays.copyOfRange(buffer, 0, Long.BYTES);
     var indexKeyInStr = new String(Arrays.copyOfRange(buffer, Long.BYTES, buffer.length));
-    return new KeyData(indexKeyInStr, createUnloaded(new PageRef(bytesToLong(dataRecordOffset))));
+    return new KeyData(indexKeyInStr,
+        DataRecord.createSynced(new PageRef(bytesToLong(dataRecordOffset)),
+            indexKeyInStr.getBytes()));
   }
 
   public KeyData(Object indexKey, DataRecord dataRecord) {
