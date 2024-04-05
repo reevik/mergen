@@ -20,15 +20,28 @@ import static net.reevik.hierarchy.index.SyncState.SYNCED;
 import static net.reevik.hierarchy.index.SyncState.UNSYNCED;
 
 import net.reevik.hierarchy.index.SyncState;
+import net.reevik.hierarchy.io.Page.PageType;
 
 public abstract class SerializableObject {
 
   private SyncState syncState;
-  private PageRef pageRef;
+  private final PageRef pageRef;
+  private PageRef parentPageRef = PageRef.empty();
+  private PageRef siblingPageRef = PageRef.empty();
+  private final DiskAccessController diskAccessController;
 
-  public SerializableObject(PageRef pageRef) {
+  public SerializableObject(PageRef pageRef, DiskAccessController diskAccessController) {
     this.pageRef = pageRef;
+    this.diskAccessController = diskAccessController;
   }
+
+  public SerializableObject(PageRef pageRef, PageRef parentPageRef,
+      DiskAccessController diskAccessController) {
+    this.pageRef = pageRef;
+    this.parentPageRef = parentPageRef;
+    this.diskAccessController = diskAccessController;
+  }
+
 
   public void markDirty() {
     syncState = DIRTY;
@@ -55,13 +68,36 @@ public abstract class SerializableObject {
   }
 
   public PageRef getPageRef() {
-    if (isUnsynced()) {
-      load();
-    }
     return pageRef;
   }
 
-  public abstract void load();
+  public PageRef getParentPageRef() {
+    return parentPageRef;
+  }
 
-  public abstract long persist();
+  public void assignParent(PageRef parentPageRef) {
+    this.parentPageRef = parentPageRef;
+  }
+
+  public void setSiblingPageRef(PageRef siblingPageRef) {
+    this.siblingPageRef = siblingPageRef;
+  }
+
+  public PageRef getSiblingPageRef() {
+    return siblingPageRef;
+  }
+
+  public DiskAccessController getDiskAccessController() {
+    return diskAccessController;
+  }
+
+  /**
+   * Persists the serializable object to index file.
+   * <p>
+   *
+   * @return the page reference including the offset in the file.
+   */
+  public abstract PageRef persist();
+
+  public abstract PageType getPageType();
 }

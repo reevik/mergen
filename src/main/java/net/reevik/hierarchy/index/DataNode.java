@@ -17,29 +17,54 @@ package net.reevik.hierarchy.index;
 
 import static net.reevik.hierarchy.index.DataRecord.createNew;
 
+import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.TreeSet;
+import net.reevik.hierarchy.io.DiskAccessController;
+import net.reevik.hierarchy.io.Page;
+import net.reevik.hierarchy.io.Page.PageType;
 import net.reevik.hierarchy.io.PageRef;
 
 public class DataNode extends Node implements Iterable<KeyData> {
 
   private final TreeSet<KeyData> keyDataSet = new TreeSet<>();
 
-  public DataNode(PageRef pageRef) {
-    super(pageRef);
+  public DataNode(PageRef pageRef, DiskAccessController diskAccessController) {
+    super(pageRef, diskAccessController);
   }
 
-  public DataNode() {
-    super(PageRef.empty());
+  public DataNode(Page page, DiskAccessController diskAccessController) {
+    super(page.getPageRef(), diskAccessController);
+  }
+
+  public static DataNode deserialize(Page page, DiskAccessController controller) {
+    var dataNode = new DataNode(page.getPageRef(), controller);
+    for (var nextCell : page) {
+      var deserialize = KeyData.deserialize(nextCell, controller);
+      dataNode.add(deserialize);
+    }
+    return dataNode;
+  }
+
+  public Page serialize() {
+    var page = new Page(this);
+    keyDataSet.forEach(keyData -> page.appendCell(keyData.serialize()));
+    return page;
+  }
+
+  public DataNode(DiskAccessController diskAccessController) {
+    super(PageRef.empty(), diskAccessController);
   }
 
   public void add(DataEntity dataEntity) {
-    add(new KeyData(dataEntity.indexKey(), createNew(dataEntity)));
+    add(new KeyData(dataEntity.indexKey(), createNew(dataEntity, getDiskAccessController())));
+    markDirty();
   }
 
   public void add(KeyData dataRecord) {
     keyDataSet.add(dataRecord);
+    markDirty();
     if (keyDataSet.size() >= BTreeIndex.ORDER) {
       split();
     }
@@ -67,7 +92,7 @@ public class DataNode extends Node implements Iterable<KeyData> {
   // Splitting the existing node into two parts at the mid-point.
   private DataNode newLeftNode() {
     var midPoint = getMidPoint();
-    var leftNode = new DataNode();
+    var leftNode = new DataNode(getDiskAccessController());
     var c = 0;
     for (var dataRecord : keyDataSet) {
       if (++c < midPoint) {
@@ -80,16 +105,16 @@ public class DataNode extends Node implements Iterable<KeyData> {
   }
 
   public Key toRightMostKey() {
-    return new Key(keyDataSet.iterator().next().getIndexKey(), this);
+    return new Key(keyDataSet.getFirst().getIndexKey(), this);
   }
 
   private Key newLeftNodeKey(DataNode leftNode) {
     leftNode.setParent(getParent());
-    return new Key(keyDataSet.iterator().next().getIndexKey(), leftNode);
+    return new Key(keyDataSet.getFirst().getIndexKey(), leftNode);
   }
 
   private InnerNode newRoot() {
-    var root = new InnerNode();
+    var root = new InnerNode(getDiskAccessController());
     root.registerObservers(getNodeObservers());
     notifyObservers(root);
     return root;
@@ -100,17 +125,17 @@ public class DataNode extends Node implements Iterable<KeyData> {
   }
 
   @Override
-  Object _firstIndexKey() {
+  Object getFirstIndexKey() {
     return keyDataSet.first().getIndexKey();
   }
 
   @Override
-  void _upsert(DataEntity dataEntity) {
+  void doUpsert(DataEntity dataEntity) {
     add(dataEntity);
   }
 
   @Override
-  Set<DataRecord> _query(String query) {
+  Set<DataRecord> doQuery(String query) {
     for (var dataKey : keyDataSet) {
       if (dataKey.getIndexKey().equals(query)) {
         return Set.of(dataKey.getDataRecord());
@@ -120,7 +145,7 @@ public class DataNode extends Node implements Iterable<KeyData> {
   }
 
   @Override
-  int _getSize() {
+  int doGetSize() {
     return keyDataSet.size();
   }
 
@@ -129,12 +154,17 @@ public class DataNode extends Node implements Iterable<KeyData> {
   }
 
   @Override
-  public void load() {
+  public PageRef persist() {
+    var page = new Page(this);
+    var offset = getDiskAccessController().write(page);
+    var pageRef = new PageRef(offset);
+    markSynced();
+    return pageRef;
   }
 
   @Override
-  public long persist() {
-    return 0;
+  public PageType getPageType() {
+    return PageType.DATA_NODE;
   }
 
   @Override

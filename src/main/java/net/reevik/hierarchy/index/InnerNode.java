@@ -20,39 +20,41 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.TreeSet;
+import net.reevik.hierarchy.io.DiskAccessController;
+import net.reevik.hierarchy.io.Page.PageType;
 import net.reevik.hierarchy.io.PageRef;
 
 public class InnerNode extends Node implements Iterable<Key> {
   private final TreeSet<Key> keySet = new TreeSet<>();
   private Key rightMost;
 
-  public InnerNode(PageRef pageRef) {
-    super(pageRef);
+  public InnerNode(PageRef pageRef, DiskAccessController diskAccessController) {
+    super(pageRef, diskAccessController);
   }
 
-  public InnerNode() {
-    super(PageRef.empty());
+  public InnerNode(DiskAccessController diskAccessController) {
+    super(PageRef.empty(), diskAccessController);
   }
 
-  public void _upsert(DataEntity dataEntity) {
+  public void doUpsert(DataEntity dataEntity) {
     var indexKeyAsStr = dataEntity.indexKey().toString();
     for (var key : keySet) {
       if (indexKeyAsStr.compareTo(key.indexKey().toString()) <= 0) {
-        key.node()._upsert(dataEntity);
+        key.node().doUpsert(dataEntity);
         return;
       }
     }
-    rightMost.node()._upsert(dataEntity);
+    rightMost.node().doUpsert(dataEntity);
   }
 
   @Override
-  Set<DataRecord> _query(String dataRecord) {
+  Set<DataRecord> doQuery(String dataRecord) {
     for (var key : keySet) {
       if (dataRecord.compareTo(key.indexKey().toString()) < 0) {
-        return key.node()._query(dataRecord);
+        return key.node().doQuery(dataRecord);
       }
     }
-    return rightMost.node()._query(dataRecord);
+    return rightMost.node().doQuery(dataRecord);
   }
 
   void add(Key key) {
@@ -90,7 +92,7 @@ public class InnerNode extends Node implements Iterable<Key> {
 
   private InnerNode newLeftNode() {
     var midPoint = getMidPoint();
-    var leftNode = new InnerNode();
+    var leftNode = new InnerNode(getDiskAccessController());
     var counter = 0;
     for (var key : keySet) {
       if (++counter < midPoint) {
@@ -114,22 +116,22 @@ public class InnerNode extends Node implements Iterable<Key> {
   }
 
   private void reattachFirstNodeTo(InnerNode leftNode) {
-    var keyToRemoveFromRightTree = keySet.iterator().next();
+    var keyToRemoveFromRightTree = keySet.getFirst();
     leftNode.setRightMost(keyToRemoveFromRightTree);
     keySet.remove(keyToRemoveFromRightTree);
   }
 
   public Key asRightMostKey() {
-    return new Key(keySet.iterator().next().indexKey(), this);
+    return new Key(keySet.getFirst().indexKey(), this);
   }
 
   private Key newLeftNodeKey(InnerNode leftNode) {
     leftNode.setParent(getParent());
-    return new Key(keySet.iterator().next(), leftNode);
+    return new Key(keySet.getFirst(), leftNode);
   }
 
   private void createRoot() {
-    var root = new InnerNode();
+    var root = new InnerNode(getDiskAccessController());
     root.registerObservers(getNodeObservers());
     setParent(root);
     root.notifyObservers(root);
@@ -140,12 +142,12 @@ public class InnerNode extends Node implements Iterable<Key> {
   }
 
   @Override
-  Object _firstIndexKey() {
+  Object getFirstIndexKey() {
     return keySet.first().indexKey();
   }
 
   @Override
-  int _getSize() {
+  int doGetSize() {
     return getTotalSize();
   }
 
@@ -162,12 +164,8 @@ public class InnerNode extends Node implements Iterable<Key> {
   }
 
   @Override
-  public void load() {
-  }
-
-  @Override
-  public long persist() {
-    return 0;
+  public PageRef persist() {
+    return PageRef.empty();
   }
 
   @Override
@@ -175,5 +173,10 @@ public class InnerNode extends Node implements Iterable<Key> {
     var listView = new ArrayList<>(Arrays.asList(keySet.toArray(new Key[keySet.size()])));
     listView.add(rightMost);
     return listView.iterator();
+  }
+
+  @Override
+  public PageType getPageType() {
+    return PageType.INNER_NODE;
   }
 }

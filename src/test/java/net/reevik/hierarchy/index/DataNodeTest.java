@@ -18,20 +18,27 @@ package net.reevik.hierarchy.index;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.function.Consumer;
+import net.reevik.hierarchy.io.DiskAccessController;
+import net.reevik.hierarchy.io.Page;
+import net.reevik.mikron.annotation.ManagedApplication;
+import net.reevik.mikron.annotation.Wire;
 import org.junit.jupiter.api.Test;
 
+@ManagedApplication(packages = "net.reevik.hierarchy.*")
 class DataNodeTest {
+
+  @Wire
+  private DiskAccessController diskAccessController;
 
   @Test
   void testSplitDataWithoutParent() {
-    var dataNode = new DataNode();
+    var dataNode = new DataNode(diskAccessController);
     var dataRecord100 = new KeyData("100", createDataRecord("100"));
     var dataRecord200 = new KeyData("200", createDataRecord("200"));
     var dataRecord300 = new KeyData("300", createDataRecord("300"));
     dataNode.add(dataRecord100);
     dataNode.add(dataRecord200);
     dataNode.add(dataRecord300);
-
     var parent = dataNode.getParent();
     assertThat(parent).isNotNull();
     ifDataNodeThenRun(parent.getRightMost().node(), (n) -> {
@@ -50,13 +57,7 @@ class DataNodeTest {
 
   @Test
   void testLeftNodeSplitDataWithParent() {
-    var dataNode = new DataNode();
-    var dataRecord500 = createDataRecord("500");
-    var dataRecord600 = createDataRecord("600");
-    var dataRecord700 = createDataRecord("700");
-    dataNode.add(new KeyData("500", dataRecord500));
-    dataNode.add(new KeyData("600", dataRecord600));
-    dataNode.add(new KeyData("700", dataRecord700));
+    var dataNode = createSplitDataNode();
     var parent = dataNode.getParent();
     var parentKeySet = parent.getKeySet();
     assertThat(parentKeySet).hasSize(1);
@@ -71,10 +72,30 @@ class DataNodeTest {
       dataNodeChild.add(new KeyData("400", dataRecord400));
       dataNodeChild.add(new KeyData("300", dataRecord300));
       dataNodeChild.add(new KeyData("450", dataRecord450));
-      assertThat(parent._getSize()).isEqualTo(2);
-      assertThat(parent.getParent()._getSize()).isEqualTo(2);
+      assertThat(parent.doGetSize()).isEqualTo(2);
+      assertThat(parent.getParent().doGetSize()).isEqualTo(2);
       assertThat(parentKeySet.stream().map(Key::indexKey).toList()).contains("600");
     }
+  }
+
+  @Test
+  void testSerialize() {
+    var splitDataNode = createSplitDataNode();
+    var page = splitDataNode.serialize();
+    var deserializedPage = DataNode.deserialize(page, diskAccessController);
+    assertThat(deserializedPage).isNotNull();
+    assertThat(deserializedPage.getKeyDataSet()).hasSize(2);
+  }
+
+  private DataNode createSplitDataNode() {
+    var dataNode = new DataNode(diskAccessController);
+    var dataRecord500 = createDataRecord("500");
+    var dataRecord600 = createDataRecord("600");
+    var dataRecord700 = createDataRecord("700");
+    dataNode.add(new KeyData("500", dataRecord500));
+    dataNode.add(new KeyData("600", dataRecord600));
+    dataNode.add(new KeyData("700", dataRecord700));
+    return dataNode;
   }
 
   private void ifDataNodeThenRun(Node node, Consumer<DataNode> consumer) {
@@ -85,6 +106,6 @@ class DataNodeTest {
   }
 
   private DataRecord createDataRecord(Object number) {
-    return new DataRecord(number.toString().getBytes());
+    return new DataRecord(number.toString().getBytes(), diskAccessController);
   }
 }

@@ -15,12 +15,9 @@
  */
 package net.reevik.hierarchy.index;
 
-import static net.reevik.hierarchy.index.IndexUtils.bytesToLong;
-
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 import java.util.Objects;
-import java.util.function.Function;
+import net.reevik.hierarchy.io.DiskAccessController;
 import net.reevik.hierarchy.io.PageRef;
 
 public class KeyData implements Comparable<KeyData> {
@@ -28,25 +25,26 @@ public class KeyData implements Comparable<KeyData> {
   private final Object indexKey;
   private final DataRecord dataRecord;
 
-  public static KeyData from(byte[] buffer) {
-    var dataRecordOffset = Arrays.copyOfRange(buffer, 0, Long.BYTES);
-    var indexKeyInStr = new String(Arrays.copyOfRange(buffer, Long.BYTES, buffer.length));
-    return new KeyData(indexKeyInStr,
-        DataRecord.createSynced(new PageRef(bytesToLong(dataRecordOffset)),
-            indexKeyInStr.getBytes()));
-  }
-
   public KeyData(Object indexKey, DataRecord dataRecord) {
     this.indexKey = indexKey;
     this.dataRecord = dataRecord;
   }
 
-  public ByteBuffer toByteBuffer() {
-    byte[] indexKeyInBytes = indexKey.toString().getBytes();
-    ByteBuffer buffer = ByteBuffer.allocate(indexKeyInBytes.length + Long.BYTES);
+  public ByteBuffer serialize() {
+    var indexKeyInBytes = indexKey.toString().getBytes();
+    var buffer = ByteBuffer.allocate(indexKeyInBytes.length + Long.BYTES);
     buffer.putLong(dataRecord.getPageRef().pageOffset());
     buffer.put(indexKeyInBytes);
     return buffer;
+  }
+
+  public static KeyData deserialize(ByteBuffer byteBuffer, DiskAccessController controller) {
+    long dataRecordOffset = byteBuffer.getLong();
+    int indeyKeySize = byteBuffer.capacity() - Long.BYTES;
+    byte[] indexKey = new byte[indeyKeySize];
+    byteBuffer.get(indexKey, 0, indeyKeySize);
+    return new KeyData(new String(indexKey), new DataRecord(new PageRef(dataRecordOffset),
+        controller));
   }
 
   @Override

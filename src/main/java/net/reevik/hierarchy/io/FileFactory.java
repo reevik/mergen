@@ -15,33 +15,17 @@
  */
 package net.reevik.hierarchy.io;
 
-import java.io.Closeable;
+import java.util.UUID;
+import net.reevik.mikron.annotation.Managed;
 
-public enum DiskManager implements Closeable {
-  DATA(new FileIO("Datafile")),
-  INDEX(new FileIO("Indexfile"));
+@Managed(name = "fileFactory")
+public class FileFactory {
 
-  DiskManager(FileIO file) {
-    this.file = file;
+  public static FileIO newDiskFile(String fileName) {
+    return new DiskFile(fileName);
   }
 
-  private final FileIO file;
-
-  @Override
-  public void close() {
-    INDEX.close();
-    DATA.close();
-  }
-
-  public long append(byte[] buffer) {
-    return file.writeAt(buffer);
-  }
-
-  public byte[] read(int offset, int size) {
-    return file.readBytes(offset, size);
-  }
-
-  public long writeAt(byte[] buffer, long offset) {
-    return file.writeAt(buffer, offset);
+  public static FileIO newDiskFile() {
+    return newDiskFile(UUID.randomUUID().toString());
   }
 }

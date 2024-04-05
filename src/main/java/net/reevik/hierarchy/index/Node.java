@@ -18,6 +18,7 @@ package net.reevik.hierarchy.index;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
+import net.reevik.hierarchy.io.DiskAccessController;
 import net.reevik.hierarchy.io.PageRef;
 import net.reevik.hierarchy.io.SerializableObject;
 
@@ -26,43 +27,39 @@ public abstract class Node extends SerializableObject {
   private final List<NodeObserver> nodeObservers = new LinkedList<>();
   private InnerNode parent;
 
-  protected Node(PageRef pageRef) {
-    super(pageRef);
+  protected Node(PageRef pageRef, DiskAccessController diskAccessController) {
+    super(pageRef, diskAccessController);
     markUnsynced();
   }
 
-  protected Node() {
-    super(new PageRef(-1));
+  protected Node(DiskAccessController diskAccessController) {
+    super(PageRef.empty(), diskAccessController);
     markDirty();
   }
 
-  Object firstIndexKey() {
-    load();
-    return _firstIndexKey();
+  public Object firstIndexKey() {
+    return getFirstIndexKey();
   }
 
-  abstract Object _firstIndexKey();
+  abstract Object getFirstIndexKey();
 
-  void upsert(DataEntity entity) {
-    load();
-    _upsert(entity);
+  public void upsert(DataEntity entity) {
+    doUpsert(entity);
   }
 
-  abstract void _upsert(DataEntity entity);
+  abstract void doUpsert(DataEntity entity);
 
-  Set<DataRecord> query(String queryString) {
-    load();
-    return _query(queryString);
+  public Set<DataRecord> query(String queryString) {
+    return doQuery(queryString);
   }
 
-  abstract Set<DataRecord> _query(String queryString);
+  abstract Set<DataRecord> doQuery(String queryString);
 
-  int getSize() {
-    load();
-    return _getSize();
+  public int getSize() {
+    return doGetSize();
   }
 
-  abstract int _getSize();
+  abstract int doGetSize();
 
   public InnerNode getParent() {
     return parent;

@@ -30,4 +30,8 @@ public record PageRef(long pageOffset) {
   byte[] toBytes() {
     return getBytesOf(pageOffset);
   }
+
+  public boolean hasNoOffset() {
+    return pageOffset == -1L;
+  }
 }

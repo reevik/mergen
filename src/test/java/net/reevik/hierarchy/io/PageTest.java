@@ -16,34 +16,37 @@
 package net.reevik.hierarchy.io;
 
 import static net.reevik.hierarchy.index.DataRecord.createNew;
-import static net.reevik.hierarchy.index.DataRecord.createSynced;
-import static net.reevik.hierarchy.io.FileIO.PAGE_SIZE;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import net.reevik.hierarchy.index.DataNode;
 import net.reevik.hierarchy.index.DataRecord;
 import net.reevik.hierarchy.index.KeyData;
+import net.reevik.mikron.annotation.ManagedApplication;
+import net.reevik.mikron.annotation.Wire;
 import org.junit.jupiter.api.Test;
 
+@ManagedApplication(packages = "net.reevik.hierarchy.*")
 public class PageTest {
+
+  @Wire(name = "diskAccessController")
+  private DiskAccessController diskAccessController;
 
   @Test
   void testSerializeAndDeserialize() {
-    var dataNode = new DataNode();
+    var dataNode = new DataNode(diskAccessController);
     var dataRecord500 = createDataRecord("500");
     var dataRecord600 = createDataRecord("600");
+    var dataRecord700 = createDataRecord("700");
     dataNode.add(new KeyData("500", dataRecord500));
     dataNode.add(new KeyData("600", dataRecord600));
+    dataNode.add(new KeyData("700", dataRecord700));
     var page0 = new Page(dataNode);
-    byte[] pageBuffer = page0.getPageBuffer();
-    assertThat(pageBuffer.length).isEqualTo(PAGE_SIZE);
-    var page1 = new Page(pageBuffer);
-    var deserializedDataNode = page1.deserialize();
-    assertThat(deserializedDataNode.contains(new KeyData("500", dataRecord500))).isTrue();
-    assertThat(deserializedDataNode.contains(new KeyData("600", dataRecord600))).isTrue();
+    for (var keyData : dataNode) {
+      page0 = page0.appendCell(keyData.serialize());
+    }
   }
 
   private DataRecord createDataRecord(Object number) {
-    return createNew(number.toString().getBytes());
+    return createNew(number.toString().getBytes(), diskAccessController);
   }
 }

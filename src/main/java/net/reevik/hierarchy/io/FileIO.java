@@ -15,96 +15,12 @@
  */
 package net.reevik.hierarchy.io;
 
-import java.io.ByteArrayOutputStream;
-import java.io.Closeable;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.RandomAccessFile;
-import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
 
-public class FileIO implements Closeable {
+public interface FileIO {
 
-  public static final int PAGE_SIZE = 1024 * 16;
+  long writeAt(byte[] data, long offset);
 
-  private final String fileName;
-  private RandomAccessFile randomAccessFile;
-  private FileChannel channel;
-  private volatile long currentOffset;
+  long writeAt(byte[] data);
 
-  public FileIO(String fileName) {
-    this.fileName = fileName;
-    this.currentOffset = open();
-  }
-
-  private long open() {
-    try {
-      String mode = "rw";
-      randomAccessFile = new RandomAccessFile(fileName, mode);
-      randomAccessFile.seek(randomAccessFile.length());
-      channel = randomAccessFile.getChannel();
-      return randomAccessFile.length();
-    } catch (FileNotFoundException e) {
-      throw new RuntimeException(e);
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
-  }
-
-  public long writeAt(byte[] data, long offset) {
-    try {
-      synchronized (this) {
-        randomAccessFile.seek(offset);
-        var buffer = ByteBuffer.allocate(data.length);
-        buffer.put(data);
-        buffer.flip();
-        channel.write(buffer);
-        currentOffset += data.length;
-      }
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
-
-    return currentOffset;
-  }
-
-  public long writeAt(byte[] data) {
-    try {
-      return writeAt(data, randomAccessFile.length());
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
-  }
-
-  public Page readPage(PageRef ref) {
-    byte[] pageInBytes = readBytes(ref.pageOffset(), PAGE_SIZE);
-    return new Page(pageInBytes);
-  }
-
-  public byte[] readBytes(long pageOffset, int pageSize) {
-    try (var out = new ByteArrayOutputStream()) {
-      channel.position(pageOffset);
-      var bufferSize = pageSize;
-      if (bufferSize > channel.size()) {
-        bufferSize = (int) channel.size();
-      }
-      var buffer = ByteBuffer.allocate(bufferSize);
-      while (channel.read(buffer) > 0) {
-        out.write(buffer.array(), 0, buffer.position());
-        buffer.clear();
-      }
-      return out.toByteArray();
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
-  }
-
-  public String getFileName() {
-    return fileName;
-  }
-
-  @Override
-  public void close() throws IOException {
-    randomAccessFile.close();
-  }
+  byte[] readBytes(long pageOffset, int pageSize);
 }

@@ -18,6 +18,8 @@ package net.reevik.hierarchy.index;
 import static net.reevik.hierarchy.index.IndexUtils.append;
 import static net.reevik.hierarchy.index.IndexUtils.getBytesOf;
 
+import net.reevik.hierarchy.io.DiskAccessController;
+import net.reevik.hierarchy.io.Page.PageType;
 import net.reevik.hierarchy.io.PageRef;
 import net.reevik.hierarchy.io.SerializableObject;
 
@@ -25,27 +27,24 @@ public class DataRecord extends SerializableObject {
   private byte[] payload = new byte[0];
   private int size;
 
-  public DataRecord(byte[] payload, PageRef pageRef) {
-    super(pageRef);
+  public DataRecord(byte[] payload, PageRef pageRef, DiskAccessController diskAccessController) {
+    super(pageRef, diskAccessController);
     this.payload = payload;
     markSynced();
   }
 
-  public DataRecord(PageRef pageRef) {
-    super(pageRef);
+  public DataRecord(PageRef pageRef, DiskAccessController diskAccessController) {
+    super(pageRef, diskAccessController);
     markUnsynced();
   }
 
-  public DataRecord(byte[] payload) {
-    super(new PageRef(-1));
+  public DataRecord(byte[] payload, DiskAccessController diskAccessController) {
+    super(new PageRef(-1), diskAccessController);
     this.payload = payload;
     markDirty();
   }
 
   public byte[] getPayload() {
-    if (isUnsynced()) {
-      load();
-    }
     return payload;
   }
 
@@ -59,14 +58,14 @@ public class DataRecord extends SerializableObject {
   }
 
   @Override
-  public void load() {
+  public PageRef persist() {
     markSynced();
+    return PageRef.empty();
   }
 
   @Override
-  public long persist() {
-    markSynced();
-    return 0;
+  public PageType getPageType() {
+    return PageType.DATA_RECORD;
   }
 
   @Override
@@ -74,26 +73,20 @@ public class DataRecord extends SerializableObject {
     return "DataRecord{" + "payload=" + new String(payload) + '}';
   }
 
-  public static DataRecord createUnloaded(PageRef ref) {
-    var dataRecord = new DataRecord(ref);
-    dataRecord.markUnsynced();
-    return dataRecord;
-  }
-
-  public static DataRecord createSynced(PageRef ref, byte[] payload) {
-    var dataRecord = new DataRecord(payload, ref);
+  public static DataRecord createSynced(PageRef ref, byte[] payload, DiskAccessController controller) {
+    var dataRecord = new DataRecord(payload, ref, controller);
     dataRecord.markSynced();
     return dataRecord;
   }
 
-  public static DataRecord createNew(DataEntity dataEntity) {
-    var dataRecord = new DataRecord(dataEntity.payload());
+  public static DataRecord createNew(DataEntity dataEntity, DiskAccessController controller) {
+    var dataRecord = new DataRecord(dataEntity.payload(), controller);
     dataRecord.markDirty();
     return dataRecord;
   }
 
-  public static DataRecord createNew(byte[] entityPayload) {
-    var dataRecord = new DataRecord(entityPayload);
+  public static DataRecord createNew(byte[] entityPayload, DiskAccessController controller) {
+    var dataRecord = new DataRecord(entityPayload, controller);
     dataRecord.markDirty();
     return dataRecord;
   }

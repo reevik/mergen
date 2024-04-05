@@ -15,27 +15,45 @@
  */
 package net.reevik.hierarchy.io;
 
-import static java.util.Arrays.copyOfRange;
-import static net.reevik.hierarchy.index.DataRecord.createSynced;
-import static net.reevik.hierarchy.index.DataRecord.createUnloaded;
-import static net.reevik.hierarchy.index.IndexUtils.bytesToLong;
-import static net.reevik.hierarchy.io.FileIO.PAGE_SIZE;
+import static net.reevik.hierarchy.io.DiskFile.PAGE_SIZE;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
-import net.reevik.hierarchy.index.DataNode;
-import net.reevik.hierarchy.index.InnerNode;
-import net.reevik.hierarchy.index.KeyData;
+import java.util.Iterator;
+import java.util.concurrent.atomic.AtomicInteger;
 
-public class Page {
+public class Page implements Iterable<ByteBuffer> {
+
+
+  @Override
+  public Iterator<ByteBuffer> iterator() {
+    return new Iterator<>() {
+      @Override
+      public boolean hasNext() {
+        return cursor.get() < cellCount;
+      }
+
+      @Override
+      public ByteBuffer next() {
+        int currentIndex = cursor.get();
+        int cellSizeAtIndex = getCellSize(currentIndex);
+        int cellOffsetAtIndex = getCellOffset(currentIndex);
+        byte[] dest = new byte[cellSizeAtIndex];
+        pageBuffer.position(cellOffsetAtIndex);
+        pageBuffer.get(dest, 0, cellSizeAtIndex);
+        cursor.incrementAndGet();
+        return ByteBuffer.wrap(dest);
+      }
+    };
+  }
 
   enum PageHeader {
     OFFSET(Long.BYTES, 0),
-    SIZE(Long.BYTES, OFFSET.nextOffset()),
-    TYPE(Short.SIZE, SIZE.nextOffset()),
-    PARENT_OFFSET(Long.BYTES, TYPE.nextOffset()),
-    SIBLING_OFFSET(Long.BYTES, PARENT_OFFSET.nextOffset()),
+    P_OFFSET(Long.BYTES, OFFSET.nextOffset()),
+    NEXT_PAGE(Long.BYTES, P_OFFSET.nextOffset()),
+    SIZE(Integer.BYTES, NEXT_PAGE.nextOffset()),
+    AVAILABLE(Integer.BYTES, SIZE.nextOffset()),
+    TYPE(Short.BYTES, AVAILABLE.nextOffset()),
+    SIBLING_OFFSET(Long.BYTES, TYPE.nextOffset()),
     CELL_COUNT(Integer.BYTES, SIBLING_OFFSET.nextOffset());
 
     private final int size;
@@ -50,12 +68,12 @@ public class Page {
       return size + start;
     }
 
-    public byte[] from(byte[] buffer) {
-      return copyOfRange(buffer, start, size);
+    int getSize() {
+      return CELL_COUNT.nextOffset();
     }
   }
 
-  enum PageType {
+  public enum PageType {
     DATA_NODE((short) 1),
     INNER_NODE((short) 2),
     DATA_RECORD((short) 3);
@@ -80,89 +98,110 @@ public class Page {
     }
   }
 
-  private PageRef pageRef;
+  private final PageRef pageRef;
   private int pageSize;
+  private PageRef nextPage;
   private PageType pageType;
   private PageRef parentPageRef;
+  private int availableSpace;
   private long siblingOffset = -1L;
   private int cellCount = 0;
-  private final ByteBuffer pageBuffer;
+  private ByteBuffer pageBuffer;
+  private SerializableObject serializableObject;
+  private final AtomicInteger cursor = new AtomicInteger(0);
 
-  public Page(DataNode dataNode) {
+  public Page(SerializableObject serializableObject) {
     this.pageBuffer = ByteBuffer.allocate(PAGE_SIZE);
     this.pageSize = PAGE_SIZE;
     this.pageType = PageType.DATA_NODE;
-    this.parentPageRef = dataNode.getParentPageOffset();
     this.siblingOffset = -1;
-    this.pageRef = dataNode.getPageRef();
-    serialize(dataNode);
+    this.pageRef = serializableObject.getPageRef();
+    this.serializableObject = serializableObject;
+    this.parentPageRef = serializableObject.getParentPageRef();
+    this.siblingOffset = serializableObject.getSiblingPageRef().pageOffset();
+    this.nextPage = PageRef.empty();
+    appendHeader();
   }
 
-  public Page(byte[] buffer) {
+  public Page(byte[] buffer, PageRef pageRef) {
     this.pageBuffer = ByteBuffer.wrap(buffer);
-    deserialize();
+    this.pageRef = pageRef;
   }
 
-  public DataNode deserialize() {
-    var sizes = readHeader();
-    var entity = new DataNode(parentPageRef);
-    entity.setParent(new InnerNode(parentPageRef)); // TODO
-    sizes.stream()
-        .map(this::read)
-        .map(KeyData::from)
-        .forEach(entity::add);
-    return entity;
+  private int getCellSize(int index) {
+    int cellIndexPos = pageBuffer.capacity() - ((index + 1) * Integer.BYTES);
+    return pageBuffer.position(cellIndexPos).getInt();
   }
 
-  private byte[] read(Integer size) {
-    var bytes = new byte[size];
-    pageBuffer.get(bytes, 0, size);
-    return bytes;
+  public Page appendCell(ByteBuffer cellBuffer) {
+    int occupiedSpace = getOccupiedSpace();
+    pageBuffer = pageBuffer.position(getHeadPosition())
+        .put(cellBuffer.array())
+        .position(PageHeader.SIBLING_OFFSET.nextOffset())
+        .putInt(++cellCount)
+        .position(pageBuffer.capacity() - (Integer.BYTES * cellCount))
+        .putInt(cellBuffer.capacity())
+        .position(PageHeader.AVAILABLE.start)
+        .putInt(occupiedSpace + cellBuffer.capacity());
+    return this;
   }
 
-  private List<Integer> readHeader() {
-    pageBuffer.clear();
-    this.pageRef = new PageRef(pageBuffer.getLong());
-    this.pageSize = pageBuffer.getInt();
-    this.pageType = PageType.from(pageBuffer.getShort());
-    this.parentPageRef = new PageRef(pageBuffer.getLong());
-    this.siblingOffset = pageBuffer.getLong();
-    this.cellCount = pageBuffer.getInt();
-    pageBuffer.mark();
-    pageBuffer.position(pageBuffer.capacity() - (cellCount * Integer.BYTES));
-    List<Integer> sizes = new ArrayList<>();
+  private int getHeadPosition() {
+    var currentCellSize = PageHeader.CELL_COUNT.nextOffset();
+    pageBuffer.position(pageBuffer.capacity());
     for (int i = 0; i < cellCount; i++) {
-      sizes.add(pageBuffer.getInt());
+      pageBuffer.position(pageBuffer.capacity() - (Integer.BYTES * (i + 1)));
+      currentCellSize += pageBuffer.getInt();
     }
-    pageBuffer.reset();
-    return sizes;
+    return currentCellSize;
   }
 
-  private void serialize(DataNode dataEntity) {
-    appendHeader(dataEntity);
-    List<Integer> sizes = new ArrayList<>();
-    for (final var keyData : dataEntity) {
-      var keyDataByteBuffer = keyData.toByteBuffer();
-      pageBuffer.put(keyDataByteBuffer.array());
-      sizes.add(keyDataByteBuffer.capacity());
+  private int getCellOffset(int index) {
+    if (index < cellCount) {
+      var currentCellSize = PageHeader.CELL_COUNT.nextOffset();
+      pageBuffer.position(pageBuffer.capacity());
+      for (int i = 0; i < index; i++) {
+        pageBuffer.position(pageBuffer.capacity() - (Integer.BYTES * (i + 1)));
+        currentCellSize += pageBuffer.getInt();
+      }
+      return currentCellSize;
     }
-    cellCount = sizes.size();
-    pageBuffer.position(pageBuffer.capacity() - (Integer.BYTES * sizes.size()));
-    sizes.forEach(pageBuffer::putInt);
-    pageBuffer.reset().putInt(sizes.size());
+    throw new IndexOutOfBoundsException();
   }
 
-  private ByteBuffer appendHeader(DataNode dataEntity) {
-    return pageBuffer.putLong(dataEntity.getPageRef().pageOffset())
+
+  private int getOccupiedSpace() {
+    pageBuffer.position(pageBuffer.capacity());
+    var totalOccupied = 0;
+    for (int i = 0; i < cellCount; i++) {
+      pageBuffer.position(pageBuffer.capacity() - (Integer.BYTES * (i + 1)));
+      totalOccupied += pageBuffer.getInt();
+    }
+    return totalOccupied;
+  }
+
+  private int getSpaceAvailable() {
+    return PAGE_SIZE - PageHeader.CELL_COUNT.nextOffset() - getOccupiedSpace();
+  }
+
+  public Page appendHeader() {
+    pageBuffer.clear();
+    pageBuffer = pageBuffer.putLong(serializableObject.getPageRef().pageOffset())
+        .putLong(serializableObject.getParentPageRef().pageOffset())
+        .putLong(nextPage.pageOffset())
         .putInt(pageSize)
+        .putInt(availableSpace)
         .putShort(pageType.toShort())
-        .putLong(dataEntity.getParentPageOffset().pageOffset())
-        .putLong(siblingOffset)
-        .mark()
+        .putLong(serializableObject.getSiblingPageRef().pageOffset())
         .putInt(cellCount);
+    return this;
   }
 
   public byte[] getPageBuffer() {
     return pageBuffer.clear().array();
+  }
+
+  public PageRef getPageRef() {
+    return pageRef;
   }
 }

@@ -13,48 +13,44 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package net.reevik.hierarchy.index;
+package net.reevik.hierarchy.io;
 
-import java.util.Set;
-import net.reevik.hierarchy.io.DiskAccessController;
+import static net.reevik.hierarchy.io.DiskFile.PAGE_SIZE;
+
+import java.io.Closeable;
+import java.io.IOException;
+import net.reevik.mikron.annotation.Configurable;
 import net.reevik.mikron.annotation.Initialize;
 import net.reevik.mikron.annotation.Managed;
-import net.reevik.mikron.annotation.Wire;
 
-@Managed
-public class BTreeIndex implements NodeObserver {
-  static final int ORDER = 3;
-  private Node root;
+@Managed(name = "diskAccessController")
+public class DiskAccessController implements Closeable {
 
-  @Wire
-  private DiskAccessController diskAccessController;
+  @Configurable(name = "fileName")
+  private String fileName;
+
+  private FileIO file;
 
   @Initialize
   public void init() {
-    this.root = resolveRoot();
+    this.file = new DiskFile(fileName);
   }
 
-  private Node resolveRoot() {
-    return null;
+  public long append(Page page) {
+    return file.writeAt(page.getPageBuffer());
   }
 
-  public void upsert(DataEntity dataEntity) {
-    if (root == null) {
-      root = new DataNode(diskAccessController);
-      root.registerObserver(this);
-    }
-    root.doUpsert(dataEntity);
+  public Page read(PageRef pageRef) {
+    var bytes = file.readBytes(pageRef.pageOffset(), PAGE_SIZE);
+    return new Page(bytes, pageRef);
   }
 
-  public Set<DataRecord> query(String indexKey) {
-    return root.doQuery(indexKey);
+  public long write(Page page) {
+    return file.writeAt(page.getPageBuffer(), page.getPageRef().pageOffset());
   }
 
   @Override
-  public void onNewRoot(Node newRoot) {
-    root = newRoot;
-  }
+  public void close() throws IOException {
 
-  public void load() {
   }
 }
