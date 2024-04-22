@@ -99,5 +99,12 @@ public abstract class SerializableObject {
    */
   public abstract PageRef persist();
 
+  /**
+   * Serializes the node into a {@link Page} instance.
+   *
+   * @return A {@link Page} instance.
+   */
+  public abstract Page serialize();
+
   public abstract PageType getPageType();
 }

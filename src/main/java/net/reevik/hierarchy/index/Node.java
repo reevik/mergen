@@ -24,6 +24,19 @@ import net.reevik.hierarchy.io.SerializableObject;
 
 public abstract class Node extends SerializableObject {
 
+  enum Type {
+
+    /**
+     * Inner node type.
+     */
+    INNER,
+
+    /**
+     * Data node type.
+     */
+    DATA
+  }
+
   private final List<NodeObserver> nodeObservers = new LinkedList<>();
   private InnerNode parent;
 
@@ -60,6 +73,8 @@ public abstract class Node extends SerializableObject {
   }
 
   abstract int doGetSize();
+
+  abstract Type getNodeType();
 
   public InnerNode getParent() {
     return parent;

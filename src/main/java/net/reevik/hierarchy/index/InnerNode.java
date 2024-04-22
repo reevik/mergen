@@ -21,6 +21,7 @@ import java.util.Iterator;
 import java.util.Set;
 import java.util.TreeSet;
 import net.reevik.hierarchy.io.DiskAccessController;
+import net.reevik.hierarchy.io.Page;
 import net.reevik.hierarchy.io.Page.PageType;
 import net.reevik.hierarchy.io.PageRef;
 
@@ -34,6 +35,15 @@ public class InnerNode extends Node implements Iterable<Key> {
 
   public InnerNode(DiskAccessController diskAccessController) {
     super(PageRef.empty(), diskAccessController);
+  }
+
+  public static InnerNode deserialize(Page page, DiskAccessController controller) {
+    var dataNode = new InnerNode(page.getPageRef(), controller);
+    for (var nextCell : page) {
+      var deserialize = Key.deserialize(nextCell, controller);
+      dataNode.add(deserialize);
+    }
+    return dataNode;
   }
 
   public void doUpsert(DataEntity dataEntity) {
@@ -58,7 +68,7 @@ public class InnerNode extends Node implements Iterable<Key> {
   }
 
   void add(Key key) {
-    if (isRightMost(key)) {
+    if (key.isRightMost()) {
       rightMost = key;
     } else {
       keySet.add(key);
@@ -70,7 +80,14 @@ public class InnerNode extends Node implements Iterable<Key> {
     }
   }
 
-  boolean isRightMost(Key key) {
+  /**
+   * In case of node split, the right part maintains the relationship with the parent of the
+   * original node. The left part will join parent node as a new node.
+   *
+   * @param key {@link Key} instance.
+   * @return If the key is the right product of a split operation.
+   */
+  boolean isRightSplitNode(Key key) {
     return key.indexKey().toString().compareTo(key.node().firstIndexKey().toString()) <= 0;
   }
 
@@ -83,14 +100,12 @@ public class InnerNode extends Node implements Iterable<Key> {
   }
 
   private void split() {
-    InnerNode leftNode = newLeftNode();
-    removeItems(leftNode);
+    var leftNode = extractLeftNode();
     createParentIfNotExists();
     getParent().add(newLeftNodeKey(leftNode));
-    reattachFirstNodeTo(leftNode);
   }
 
-  private InnerNode newLeftNode() {
+  private InnerNode extractLeftNode() {
     var midPoint = getMidPoint();
     var leftNode = new InnerNode(getDiskAccessController());
     var counter = 0;
@@ -101,6 +116,8 @@ public class InnerNode extends Node implements Iterable<Key> {
         break;
       }
     }
+    removeItems(leftNode);
+    initRightmost(leftNode);
     return leftNode;
   }
 
@@ -115,7 +132,7 @@ public class InnerNode extends Node implements Iterable<Key> {
     }
   }
 
-  private void reattachFirstNodeTo(InnerNode leftNode) {
+  private void initRightmost(InnerNode leftNode) {
     var keyToRemoveFromRightTree = keySet.getFirst();
     leftNode.setRightMost(keyToRemoveFromRightTree);
     keySet.remove(keyToRemoveFromRightTree);
@@ -151,6 +168,11 @@ public class InnerNode extends Node implements Iterable<Key> {
     return getTotalSize();
   }
 
+  @Override
+  Type getNodeType() {
+    return Type.INNER;
+  }
+
   public Set<Key> getKeySet() {
     return keySet;
   }
@@ -166,6 +188,13 @@ public class InnerNode extends Node implements Iterable<Key> {
   @Override
   public PageRef persist() {
     return PageRef.empty();
+  }
+
+  @Override
+  public Page serialize() {
+    var page = new Page(this);
+    keySet.forEach(key -> page.appendCell(key.serialize()));
+    return page;
   }
 
   @Override

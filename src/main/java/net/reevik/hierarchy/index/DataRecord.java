@@ -15,10 +15,8 @@
  */
 package net.reevik.hierarchy.index;
 
-import static net.reevik.hierarchy.index.IndexUtils.append;
-import static net.reevik.hierarchy.index.IndexUtils.getBytesOf;
-
 import net.reevik.hierarchy.io.DiskAccessController;
+import net.reevik.hierarchy.io.Page;
 import net.reevik.hierarchy.io.Page.PageType;
 import net.reevik.hierarchy.io.PageRef;
 import net.reevik.hierarchy.io.SerializableObject;
@@ -48,19 +46,15 @@ public class DataRecord extends SerializableObject {
     return payload;
   }
 
-  public byte[] getBytes() {
-    var totalRecordSize = getPayload().length;
-    byte[] totalRecordSizeInBytes = getBytesOf(totalRecordSize);
-    byte[] byteRepresentation = new byte[totalRecordSizeInBytes.length + totalRecordSize];
-    int newStartPos = append(byteRepresentation, totalRecordSizeInBytes, 0);
-    append(byteRepresentation, payload, newStartPos);
-    return byteRepresentation;
-  }
-
   @Override
   public PageRef persist() {
     markSynced();
     return PageRef.empty();
+  }
+
+  @Override
+  public Page serialize() {
+    return null;
   }
 
   @Override

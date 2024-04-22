@@ -17,7 +17,6 @@ package net.reevik.hierarchy.index;
 
 import static net.reevik.hierarchy.index.DataRecord.createNew;
 
-import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.TreeSet;
@@ -47,6 +46,7 @@ public class DataNode extends Node implements Iterable<KeyData> {
     return dataNode;
   }
 
+  @Override
   public Page serialize() {
     var page = new Page(this);
     keyDataSet.forEach(keyData -> page.appendCell(keyData.serialize()));
@@ -147,6 +147,11 @@ public class DataNode extends Node implements Iterable<KeyData> {
   @Override
   int doGetSize() {
     return keyDataSet.size();
+  }
+
+  @Override
+  Type getNodeType() {
+    return Type.DATA;
   }
 
   public Set<KeyData> getKeyDataSet() {

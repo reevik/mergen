@@ -18,16 +18,47 @@ package net.reevik.hierarchy.index;
 import static net.reevik.hierarchy.index.IndexUtils.append;
 import static net.reevik.hierarchy.index.IndexUtils.getBytesOf;
 
+import java.nio.ByteBuffer;
 import java.util.Objects;
+import net.reevik.hierarchy.index.Node.Type;
+import net.reevik.hierarchy.io.DiskAccessController;
+import net.reevik.hierarchy.io.PageRef;
 
 public class Key implements Comparable<Key> {
-
   private final Object indexKey;
   private final Node node;
 
   public Key(Object indexKey, Node node) {
     this.indexKey = indexKey;
     this.node = node;
+  }
+
+  public boolean isRightMost() {
+    return node.getFirstIndexKey().toString().compareTo(indexKey.toString()) >= 0;
+  }
+
+  public ByteBuffer serialize() {
+    var indexKeyInBytes = indexKey.toString().getBytes();
+    var buffer = ByteBuffer.allocate(indexKeyInBytes.length + Long.BYTES);
+    buffer.putInt(node.getNodeType().ordinal());
+    buffer.putLong(node.getPageRef().pageOffset());
+    buffer.put(indexKeyInBytes);
+    return buffer;
+  }
+
+  public static Key deserialize(ByteBuffer byteBuffer, DiskAccessController controller) {
+    var nodeType = Node.Type.values()[byteBuffer.getInt()];
+    var nodeOffset = byteBuffer.getLong();
+    var indeyKeySize = byteBuffer.capacity() - Long.BYTES - Integer.BYTES;
+    var indexKey = new byte[indeyKeySize];
+    byteBuffer.get(indexKey, 0, indeyKeySize);
+    Node node;
+    if (nodeType.equals(Type.INNER)) {
+      node = new InnerNode(PageRef.of(nodeOffset), controller);
+    } else {
+      node = new DataNode(PageRef.of(nodeOffset), controller);
+    }
+    return new Key(new String(indexKey), node);
   }
 
   @Override
@@ -65,19 +96,5 @@ public class Key implements Comparable<Key> {
 
   public Node node() {
     return node;
-  }
-
-  public byte[] getBytes() {
-    var nodeOffsetInBytes = getBytesOf(node.getPageRef().pageOffset());
-    var indexKeyInBytes = indexKey.toString().getBytes();
-    int totalRecordSize = indexKeyInBytes.length;
-    totalRecordSize += nodeOffsetInBytes.length;
-    var totalRecordSizeInBytes = getBytesOf(totalRecordSize);
-    totalRecordSize += totalRecordSizeInBytes.length;
-    var payload = new byte[totalRecordSize];
-    int newStartPos = append(payload, totalRecordSizeInBytes, 0);
-    newStartPos = append(payload, nodeOffsetInBytes, newStartPos);
-    append(payload, nodeOffsetInBytes, newStartPos);
-    return payload;
   }
 }
