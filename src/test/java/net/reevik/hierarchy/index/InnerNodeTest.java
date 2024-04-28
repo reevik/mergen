@@ -15,15 +15,15 @@
  */
 package net.reevik.hierarchy.index;
 
+import static net.reevik.hierarchy.index.Key.KeyType.RMN;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.mockito.Mockito.when;
 
 import net.reevik.hierarchy.io.DiskAccessController;
 import net.reevik.hierarchy.io.PageRef;
 import net.reevik.mikron.annotation.ManagedApplication;
 import net.reevik.mikron.annotation.Wire;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 
 @ManagedApplication(packages = "net.reevik.hierarchy.*")
 class InnerNodeTest {
@@ -31,36 +31,70 @@ class InnerNodeTest {
   @Wire
   private DiskAccessController diskAccessController;
 
+  /**
+   * It ensures that the inner node split happens after it reaches its the capacity. Post split,
+   * we expect a new parent inner, which has two children nodes.
+   *
+   * Initial inner node looks as follows,
+   *
+   *                [100, 200, -]
+   *                /    /     \
+   *            [90]   [190]   [600]
+   *
+   * post that we add another inner node with the index key, [300]:
+   *
+   *              [100, 200, 300, -]
+   *                /    /    /     \
+   *            [90] [190] [290]    [600]
+   *
+   * which results in,
+   *
+   *                 [200]
+   *                 /   \
+   *              [100]   [300]
+   *            /  \       /   \
+   *        [90]  [190] [290]  [600]
+   */
   @Test
-  void testSplit() {
-    var innerNode = createSplitInnerNode();
+  void testSplitInnerNodeAndEnsureParentAndRightMost() {
+    var innerNode = createAndSplitInnerNode();
     var parent = innerNode.getParent();
     assertThat(parent).isNotNull();
+    var keys = parent.getIndexKeys();
+    Assertions.assertThat(keys).contains("200").hasSize(1);
+    var node = parent.getRightMost().node();
+    Assertions.assertThat(node).isInstanceOf(InnerNode.class);
+    var parentRightMost = (InnerNode) node;
+    var parentRightMostChildren = parentRightMost.getIndexKeys();
+    Assertions.assertThat(parentRightMostChildren).contains("300").hasSize(1);
+    Assertions.assertThat(parentRightMost.getRightMost()).isNotNull();
+    var parentRightMostRightMostNode = parentRightMost.getRightMost().node();
+    var parentRightMostInnerRightMostNode = (InnerNode) parentRightMostRightMostNode;
+    var parentRightMostInnerRightMostChildren = parentRightMostInnerRightMostNode.getIndexKeys();
+    Assertions.assertThat(parentRightMostInnerRightMostChildren).contains("600");
   }
 
-  private InnerNode createSplitInnerNode() {
+  @Test
+  void testSerizalizeInnenNode() {
+    var splitInnerNode = createAndSplitInnerNode();
+    var page = splitInnerNode.serialize();
+    var deserializedPage = InnerNode.deserialize(page, diskAccessController);
+    Assertions.assertThat(deserializedPage).isNotNull();
+    Assertions.assertThat(deserializedPage.getKeySet()).hasSize(2);
+  }
+
+  private InnerNode createAndSplitInnerNode() {
     var inner = createInnerNode();
-    var subInner1Key = Mockito.mock(Key.class);
-    when(subInner1Key.isRightMost()).thenReturn(false);
-    when(subInner1Key.indexKey()).thenReturn("100");
-    var subInner2Key = Mockito.mock(Key.class);
-    when(subInner2Key.isRightMost()).thenReturn(false);
-    when(subInner2Key.indexKey()).thenReturn("200");
-    var subInner3Key = Mockito.mock(Key.class);
-    when(subInner3Key.isRightMost()).thenReturn(true);
-    when(subInner3Key.indexKey()).thenReturn("300");
-    var subInner4Key = Mockito.mock(Key.class);
-    when(subInner4Key.isRightMost()).thenReturn(false);
-    when(subInner4Key.indexKey()).thenReturn("300");
-    inner.add(subInner1Key);
-    inner.add(subInner2Key);
-    inner.add(subInner3Key);
-    inner.add(subInner4Key);
+    inner.add(new Key("100", createInnerNode()));
+    inner.add(new Key(RMN, createInnerNodeWithChild("600")));
+    inner.add(new Key("200", createInnerNode()));
+    inner.add(new Key("300", createInnerNode()));
     return inner;
   }
 
-  private InnerNode createInnerNode(Object childKey) {
-    InnerNode innerNode = new InnerNode(PageRef.empty(), diskAccessController);
+
+  private InnerNode createInnerNodeWithChild(String childKey) {
+    var innerNode = new InnerNode(PageRef.empty(), diskAccessController);
     innerNode.add(new Key(childKey, null));
     return innerNode;
   }

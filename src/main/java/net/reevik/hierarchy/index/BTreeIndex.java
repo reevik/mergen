@@ -23,7 +23,7 @@ import net.reevik.mikron.annotation.Wire;
 
 @Managed
 public class BTreeIndex implements NodeObserver {
-  static final int ORDER = 3;
+  static final int ORDER = 4;
   private Node root;
 
   @Wire

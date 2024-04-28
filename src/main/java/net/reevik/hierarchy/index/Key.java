@@ -15,8 +15,7 @@
  */
 package net.reevik.hierarchy.index;
 
-import static net.reevik.hierarchy.index.IndexUtils.append;
-import static net.reevik.hierarchy.index.IndexUtils.getBytesOf;
+import static net.reevik.hierarchy.index.Key.KeyType.RMN;
 
 import java.nio.ByteBuffer;
 import java.util.Objects;
@@ -25,6 +24,11 @@ import net.reevik.hierarchy.io.DiskAccessController;
 import net.reevik.hierarchy.io.PageRef;
 
 public class Key implements Comparable<Key> {
+
+  enum KeyType {
+    RMN
+  }
+
   private final Object indexKey;
   private final Node node;
 
@@ -33,13 +37,18 @@ public class Key implements Comparable<Key> {
     this.node = node;
   }
 
+  public Key(Node node) {
+    this.indexKey = RMN;
+    this.node = node;
+  }
+
   public boolean isRightMost() {
-    return node.getFirstIndexKey().toString().compareTo(indexKey.toString()) >= 0;
+    return indexKey.equals(RMN);
   }
 
   public ByteBuffer serialize() {
     var indexKeyInBytes = indexKey.toString().getBytes();
-    var buffer = ByteBuffer.allocate(indexKeyInBytes.length + Long.BYTES);
+    var buffer = ByteBuffer.allocate(indexKeyInBytes.length + Long.BYTES + Integer.BYTES);
     buffer.putInt(node.getNodeType().ordinal());
     buffer.putLong(node.getPageRef().pageOffset());
     buffer.put(indexKeyInBytes);

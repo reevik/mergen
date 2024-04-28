@@ -81,7 +81,7 @@ public class DataNode extends Node implements Iterable<KeyData> {
     if (!hasParent()) {
       var root = newRoot();
       setParent(root);
-      root.add(this.toRightMostKey());
+      root.add(toRightMostKey());
     }
   }
 
@@ -105,7 +105,7 @@ public class DataNode extends Node implements Iterable<KeyData> {
   }
 
   public Key toRightMostKey() {
-    return new Key(keyDataSet.getFirst().getIndexKey(), this);
+    return new Key(this);
   }
 
   private Key newLeftNodeKey(DataNode leftNode) {

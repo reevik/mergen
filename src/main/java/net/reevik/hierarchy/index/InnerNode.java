@@ -18,6 +18,7 @@ package net.reevik.hierarchy.index;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 import net.reevik.hierarchy.io.DiskAccessController;
@@ -26,6 +27,7 @@ import net.reevik.hierarchy.io.Page.PageType;
 import net.reevik.hierarchy.io.PageRef;
 
 public class InnerNode extends Node implements Iterable<Key> {
+
   private final TreeSet<Key> keySet = new TreeSet<>();
   private Key rightMost;
 
@@ -38,16 +40,14 @@ public class InnerNode extends Node implements Iterable<Key> {
   }
 
   public static InnerNode deserialize(Page page, DiskAccessController controller) {
-    var dataNode = new InnerNode(page.getPageRef(), controller);
-    for (var nextCell : page) {
-      var deserialize = Key.deserialize(nextCell, controller);
-      dataNode.add(deserialize);
-    }
+    InnerNode dataNode = new InnerNode(page.getPageRef(), controller);
+    page.forEach(nextCell -> dataNode.add(Key.deserialize(nextCell, controller)));
     return dataNode;
   }
 
+  @Override
   public void doUpsert(DataEntity dataEntity) {
-    var indexKeyAsStr = dataEntity.indexKey().toString();
+    String indexKeyAsStr = dataEntity.indexKey().toString();
     for (var key : keySet) {
       if (indexKeyAsStr.compareTo(key.indexKey().toString()) <= 0) {
         key.node().doUpsert(dataEntity);
@@ -75,20 +75,9 @@ public class InnerNode extends Node implements Iterable<Key> {
     }
 
     int totalSize = getTotalSize();
-    if (totalSize > BTreeIndex.ORDER) {
+    if (totalSize > BTreeIndex.ORDER - 1) {
       split();
     }
-  }
-
-  /**
-   * In case of node split, the right part maintains the relationship with the parent of the
-   * original node. The left part will join parent node as a new node.
-   *
-   * @param key {@link Key} instance.
-   * @return If the key is the right product of a split operation.
-   */
-  boolean isRightSplitNode(Key key) {
-    return key.indexKey().toString().compareTo(key.node().firstIndexKey().toString()) <= 0;
   }
 
   private int getTotalSize() {
@@ -100,15 +89,14 @@ public class InnerNode extends Node implements Iterable<Key> {
   }
 
   private void split() {
-    var leftNode = extractLeftNode();
     createParentIfNotExists();
-    getParent().add(newLeftNodeKey(leftNode));
+    extractLeftNode();
   }
 
-  private InnerNode extractLeftNode() {
-    var midPoint = getMidPoint();
-    var leftNode = new InnerNode(getDiskAccessController());
-    var counter = 0;
+  private void extractLeftNode() {
+    InnerNode leftNode = new InnerNode(getDiskAccessController());
+    int midPoint = getMidPoint();
+    int counter = 0;
     for (var key : keySet) {
       if (++counter < midPoint) {
         leftNode.add(key);
@@ -117,8 +105,14 @@ public class InnerNode extends Node implements Iterable<Key> {
       }
     }
     removeItems(leftNode);
-    initRightmost(leftNode);
-    return leftNode;
+    attachToParent(leftNode);
+  }
+
+  private void attachToParent(InnerNode leftNode) {
+    Object leftNodeParentKey = initRightmost(leftNode);
+    leftNode.setParent(getParent());
+    Key key = new Key(leftNodeParentKey, leftNode);
+    getParent().add(key);
   }
 
   private void removeItems(InnerNode leftNode) {
@@ -132,19 +126,16 @@ public class InnerNode extends Node implements Iterable<Key> {
     }
   }
 
-  private void initRightmost(InnerNode leftNode) {
-    var keyToRemoveFromRightTree = keySet.getFirst();
-    leftNode.setRightMost(keyToRemoveFromRightTree);
+  private Object initRightmost(InnerNode leftNode) {
+    Key keyToRemoveFromRightTree = keySet.getFirst();
+    Key keyOftheLeftsRightMostNode = new Key(keyToRemoveFromRightTree.node());
+    leftNode.setRightMost(keyOftheLeftsRightMostNode);
     keySet.remove(keyToRemoveFromRightTree);
+    return keyToRemoveFromRightTree.indexKey();
   }
 
-  public Key asRightMostKey() {
-    return new Key(keySet.getFirst().indexKey(), this);
-  }
-
-  private Key newLeftNodeKey(InnerNode leftNode) {
-    leftNode.setParent(getParent());
-    return new Key(keySet.getFirst(), leftNode);
+  private Key asRightMostKey() {
+    return new Key(this);
   }
 
   private void createRoot() {
@@ -194,6 +185,7 @@ public class InnerNode extends Node implements Iterable<Key> {
   public Page serialize() {
     var page = new Page(this);
     keySet.forEach(key -> page.appendCell(key.serialize()));
+    page.appendCell(rightMost.serialize());
     return page;
   }
 
@@ -207,5 +199,9 @@ public class InnerNode extends Node implements Iterable<Key> {
   @Override
   public PageType getPageType() {
     return PageType.INNER_NODE;
+  }
+
+  public List<String> getIndexKeys() {
+    return keySet.stream().map(Key::indexKey).map(Object::toString).toList();
   }
 }
