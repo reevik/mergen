@@ -65,7 +65,7 @@ public class DataNode extends Node implements Iterable<KeyData> {
   public void add(KeyData dataRecord) {
     keyDataSet.add(dataRecord);
     markDirty();
-    if (keyDataSet.size() >= BTreeIndex.ORDER) {
+    if (keyDataSet.size() >= BTreeIndex.ORDER - 1) {
       split();
     }
   }

@@ -16,19 +16,15 @@
 package net.reevik.hierarchy.index;
 
 import java.util.Set;
-import net.reevik.hierarchy.io.DiskAccessController;
 import net.reevik.mikron.annotation.ManagedApplication;
-import net.reevik.mikron.annotation.Wire;
 import org.junit.jupiter.api.Test;
 
 @ManagedApplication(packages = "net.reevik.hierarchy.index.*")
 class BTreeIndexTest {
 
-  @Wire
-  private BTreeIndex bTreeIndex;
-
   @Test
-  void indexQuery() {
+  void testIndexQuery() {
+    BTreeIndex bTreeIndex = new BTreeIndex();
     bTreeIndex.upsert(createRecord("500", "500"));
     bTreeIndex.upsert(createRecord("400", "400"));
     bTreeIndex.upsert(createRecord("600", "600"));

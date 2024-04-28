@@ -74,8 +74,7 @@ public class InnerNode extends Node implements Iterable<Key> {
       keySet.add(key);
     }
 
-    int totalSize = getTotalSize();
-    if (totalSize > BTreeIndex.ORDER - 1) {
+    if (getTotalSize() >= BTreeIndex.ORDER) {
       split();
     }
   }
@@ -139,7 +138,7 @@ public class InnerNode extends Node implements Iterable<Key> {
   }
 
   private void createRoot() {
-    var root = new InnerNode(getDiskAccessController());
+    InnerNode root = new InnerNode(getDiskAccessController());
     root.registerObservers(getNodeObservers());
     setParent(root);
     root.notifyObservers(root);

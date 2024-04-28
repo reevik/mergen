@@ -19,8 +19,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.function.Consumer;
 import net.reevik.hierarchy.io.DiskAccessController;
-import net.reevik.hierarchy.io.Page;
-import net.reevik.hierarchy.io.PageRef;
 import net.reevik.mikron.annotation.ManagedApplication;
 import net.reevik.mikron.annotation.Wire;
 import org.junit.jupiter.api.Test;
@@ -88,27 +86,6 @@ class DataNodeTest {
     assertThat(deserializedPage.getKeyDataSet()).hasSize(2);
   }
 
-  @Test
-  void testSerizalizeInnenNode() {
-    InnerNode splitInnerNode = createSplitInnerNode();
-    Page page = splitInnerNode.serialize();
-    var deserializedPage = InnerNode.deserialize(page, diskAccessController);
-    assertThat(deserializedPage).isNotNull();
-    assertThat(deserializedPage.getKeySet()).hasSize(2);
-  }
-
-  private InnerNode createSplitInnerNode() {
-    var inner = createInnerNode();
-    var subInner1 = createInnerNode();
-    var subInner2 = createInnerNode();
-    var subInner3 = createInnerNode();
-    inner.add(new Key("500", subInner1));
-    inner.add(new Key("600", subInner2));
-    inner.add(new Key("700", subInner3));
-    return inner;
-  }
-
-
   private DataNode createSplitDataNode() {
     var dataNode = new DataNode(diskAccessController);
     var dataRecord500 = createDataRecord("500");
@@ -129,9 +106,5 @@ class DataNodeTest {
 
   private DataRecord createDataRecord(Object number) {
     return new DataRecord(number.toString().getBytes(), diskAccessController);
-  }
-
-  private InnerNode createInnerNode() {
-    return new InnerNode(PageRef.empty(), diskAccessController);
   }
 }

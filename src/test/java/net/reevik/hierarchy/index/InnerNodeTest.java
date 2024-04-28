@@ -31,7 +31,7 @@ class InnerNodeTest {
   @Wire
   private DiskAccessController diskAccessController;
 
-  /**
+  /*
    * It ensures that the inner node split happens after it reaches its the capacity. Post split,
    * we expect a new parent inner, which has two children nodes.
    *
