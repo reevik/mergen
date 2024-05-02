@@ -23,7 +23,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class Page implements Iterable<ByteBuffer> {
 
-
   @Override
   public Iterator<ByteBuffer> iterator() {
     return new Iterator<>() {

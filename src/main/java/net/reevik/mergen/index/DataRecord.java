@@ -15,6 +15,8 @@
  */
 package net.reevik.mergen.index;
 
+import java.nio.ByteBuffer;
+import java.util.Iterator;
 import net.reevik.mergen.io.DiskAccessController;
 import net.reevik.mergen.io.Page;
 import net.reevik.mergen.io.Page.PageType;
@@ -54,7 +56,9 @@ public class DataRecord extends SerializableObject {
 
   @Override
   public Page serialize() {
-    return null;
+    var page = new Page(this);
+    page.appendCell(ByteBuffer.wrap(payload));
+    return page;
   }
 
   @Override
@@ -83,5 +87,13 @@ public class DataRecord extends SerializableObject {
     var dataRecord = new DataRecord(entityPayload, controller);
     dataRecord.markDirty();
     return dataRecord;
+  }
+
+  public static DataRecord deserialize(Page page, DiskAccessController controller) {
+    Iterator<ByteBuffer> iterator = page.iterator();
+    if (iterator.hasNext()) {
+      return new DataRecord(iterator.next().array(), page.getPageRef(), controller);
+    }
+    return null;
   }
 }
