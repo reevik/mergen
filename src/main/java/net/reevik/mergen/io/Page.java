@@ -47,13 +47,13 @@ public class Page implements Iterable<ByteBuffer> {
 
   enum PageHeader {
     OFFSET(Long.BYTES, 0),
-    P_OFFSET(Long.BYTES, OFFSET.nextOffset()),
-    NEXT_PAGE(Long.BYTES, P_OFFSET.nextOffset()),
-    SIZE(Integer.BYTES, NEXT_PAGE.nextOffset()),
-    AVAILABLE(Integer.BYTES, SIZE.nextOffset()),
-    TYPE(Short.BYTES, AVAILABLE.nextOffset()),
-    SIBLING_OFFSET(Long.BYTES, TYPE.nextOffset()),
-    CELL_COUNT(Integer.BYTES, SIBLING_OFFSET.nextOffset());
+    P_OFFSET(Long.BYTES, OFFSET.nextHeaderOffset()),
+    NEXT_PAGE(Long.BYTES, P_OFFSET.nextHeaderOffset()),
+    SIZE(Integer.BYTES, NEXT_PAGE.nextHeaderOffset()),
+    AVAILABLE(Integer.BYTES, SIZE.nextHeaderOffset()),
+    TYPE(Short.BYTES, AVAILABLE.nextHeaderOffset()),
+    SIBLING_OFFSET(Long.BYTES, TYPE.nextHeaderOffset()),
+    CELL_COUNT(Integer.BYTES, SIBLING_OFFSET.nextHeaderOffset());
 
     private final int size;
     private final int start;
@@ -63,12 +63,16 @@ public class Page implements Iterable<ByteBuffer> {
       this.start = start;
     }
 
-    int nextOffset() {
+    int nextHeaderOffset() {
       return size + start;
     }
 
-    int getSize() {
-      return CELL_COUNT.nextOffset();
+    int offset() {
+      return start;
+    }
+
+    static int getSize() {
+      return CELL_COUNT.nextHeaderOffset();
     }
   }
 
@@ -133,31 +137,39 @@ public class Page implements Iterable<ByteBuffer> {
   }
 
   public Page appendCell(ByteBuffer cellBuffer) {
-    int occupiedSpace = getOccupiedSpace();
+    int occupiedSpace = getOccupiedCellSpace() + cellBuffer.capacity() + Integer.BYTES;
     pageBuffer = pageBuffer.position(getHeadPosition())
         .put(cellBuffer.array())
-        .position(PageHeader.SIBLING_OFFSET.nextOffset())
+        .position(PageHeader.CELL_COUNT.offset())
         .putInt(++cellCount)
-        .position(pageBuffer.capacity() - (Integer.BYTES * cellCount))
+        .position(getNextCellPointerOffset())
         .putInt(cellBuffer.capacity())
-        .position(PageHeader.AVAILABLE.start)
-        .putInt(occupiedSpace + cellBuffer.capacity());
+        .position(PageHeader.AVAILABLE.offset())
+        .putInt(pageSize - occupiedSpace);
     return this;
   }
 
+  private int getNextCellPointerOffset() {
+    return pageBuffer.capacity() - (Integer.BYTES * cellCount);
+  }
+
   private int getHeadPosition() {
-    var currentCellSize = PageHeader.CELL_COUNT.nextOffset();
+    var firstCellOffset = PageHeader.CELL_COUNT.nextHeaderOffset();
+    // wind to the end of the page.
     pageBuffer.position(pageBuffer.capacity());
+    // while going back one int byte for each cell pointer, add cell size to the current cell
+    // head offset.
     for (int i = 0; i < cellCount; i++) {
       pageBuffer.position(pageBuffer.capacity() - (Integer.BYTES * (i + 1)));
-      currentCellSize += pageBuffer.getInt();
+      int nextCellSize = pageBuffer.getInt();
+      firstCellOffset += nextCellSize;
     }
-    return currentCellSize;
+    return firstCellOffset;
   }
 
   private int getCellOffset(int index) {
     if (index < cellCount) {
-      var currentCellSize = PageHeader.CELL_COUNT.nextOffset();
+      var currentCellSize = PageHeader.CELL_COUNT.nextHeaderOffset();
       pageBuffer.position(pageBuffer.capacity());
       for (int i = 0; i < index; i++) {
         pageBuffer.position(pageBuffer.capacity() - (Integer.BYTES * (i + 1)));
@@ -169,18 +181,20 @@ public class Page implements Iterable<ByteBuffer> {
   }
 
 
-  private int getOccupiedSpace() {
+  private int getOccupiedCellSpace() {
     pageBuffer.position(pageBuffer.capacity());
     var totalOccupied = 0;
+    var cellHeaderSize = Integer.BYTES;
     for (int i = 0; i < cellCount; i++) {
-      pageBuffer.position(pageBuffer.capacity() - (Integer.BYTES * (i + 1)));
-      totalOccupied += pageBuffer.getInt();
+      pageBuffer.position(pageBuffer.capacity() - (cellHeaderSize * (i + 1)));
+      int currentCellSize = pageBuffer.getInt();
+      totalOccupied += currentCellSize + cellHeaderSize;
     }
     return totalOccupied;
   }
 
   private int getSpaceAvailable() {
-    return PAGE_SIZE - PageHeader.CELL_COUNT.nextOffset() - getOccupiedSpace();
+    return PAGE_SIZE - PageHeader.getSize() - getOccupiedCellSpace();
   }
 
   public Page appendHeader() {

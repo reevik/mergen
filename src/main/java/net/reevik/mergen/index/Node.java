@@ -17,7 +17,7 @@ package net.reevik.mergen.index;
 
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Set;
+import java.util.function.BiFunction;
 import net.reevik.mergen.io.DiskAccessController;
 import net.reevik.mergen.io.PageRef;
 import net.reevik.mergen.io.SerializableObject;
@@ -62,11 +62,13 @@ public abstract class Node extends SerializableObject {
 
   abstract void doUpsert(DataEntity entity);
 
-  public Set<DataRecord> query(String queryString) {
-    return doQuery(queryString);
+  public List<DataRecord> query(String queryString,
+      BiFunction<KeyData, DataNode, DataRecord> operation) {
+    return doQuery(queryString, operation);
   }
 
-  abstract Set<DataRecord> doQuery(String queryString);
+  abstract List<DataRecord> doQuery(String queryString,
+      BiFunction<KeyData, DataNode, DataRecord> operation);
 
   public int getSize() {
     return doGetSize();

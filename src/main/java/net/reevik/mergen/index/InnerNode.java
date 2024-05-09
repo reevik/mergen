@@ -21,6 +21,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.BiFunction;
 import net.reevik.mergen.io.DiskAccessController;
 import net.reevik.mergen.io.Page;
 import net.reevik.mergen.io.Page.PageType;
@@ -58,13 +59,13 @@ public class InnerNode extends Node implements Iterable<Key> {
   }
 
   @Override
-  Set<DataRecord> doQuery(String dataRecord) {
+  List<DataRecord> doQuery(String indexQuery, BiFunction<KeyData, DataNode, DataRecord> operation) {
     for (var key : keySet) {
-      if (dataRecord.compareTo(key.indexKey().toString()) < 0) {
-        return key.node().doQuery(dataRecord);
+      if (indexQuery.compareTo(key.indexKey().toString()) < 0) {
+        return key.node().doQuery(indexQuery, operation);
       }
     }
-    return rightMost.node().doQuery(dataRecord);
+    return rightMost.node().doQuery(indexQuery, operation);
   }
 
   void add(Key key) {
@@ -77,6 +78,80 @@ public class InnerNode extends Node implements Iterable<Key> {
     if (getTotalSize() >= BTreeIndex.ORDER) {
       split();
     }
+  }
+
+  void delete(String indexKey) {
+    keySet.removeIf(key -> indexKey.compareTo(key.indexKey().toString()) < 0);
+    if (rightMost.indexKey().toString().compareTo(indexKey) >= 0) {
+      rightMost = null;
+      if (keySet.size() >= 2) {
+        var lastKey = keySet.last();
+        rightMost = lastKey;
+        keySet.remove(lastKey);
+      }
+    }
+    // If the current node has a single child.
+    if (isUnbalanced()) {
+      Key remainingKey = getLastKeyOrRightmost();
+      if (getParent().isBinaryNode()) {
+        Key parentKey = getParent().getLastKeyOrRightmost();
+        if (parentKey.compareTo(remainingKey) > 0) {
+          // merge the parent to the right branch.
+          var rightBranchInner = (InnerNode) getParent().getRightMost().node();
+          rightBranchInner.add(new Key(parentKey.indexKey(), remainingKey.node()));
+          if (getParent().getParent() != null) {
+            rightBranchInner.setParent(getParent().getParent());
+          } else {
+            rightBranchInner.setParent(null);
+            notifyObservers(rightBranchInner);
+          }
+        } else {
+          // merge the parent to the left branch.
+          var leftBranchInner = (InnerNode) getParent().getLastKeyOrRightmost().node();
+          leftBranchInner.add(new Key(parentKey.indexKey(), remainingKey.node()));
+          if (getParent().getParent() != null) {
+            leftBranchInner.setParent(getParent().getParent());
+          } else {
+            leftBranchInner.setParent(null);
+            notifyObservers(leftBranchInner);
+          }
+          leftBranchInner.setParent(null);
+          notifyObservers(leftBranchInner);
+        }
+      } else {
+        Iterator<Key> iterator = getParent().getKeySet().iterator();
+        while (iterator.hasNext()) {
+          Key nextOnParent = iterator.next();
+          if (nextOnParent.compareTo(remainingKey) > 0) {
+            InnerNode rightBranchInner = iterator.hasNext() ?
+                (InnerNode) iterator.next().node() :
+                (InnerNode) getParent().getRightMost().node();
+            rightBranchInner.add(new Key(nextOnParent.indexKey(), remainingKey.node()));
+            getParent().getKeySet().remove(nextOnParent);
+          }
+        }
+        if (remainingKey.compareTo(getParent().getRightMost()) >= 0) {
+          Key parentLastKey = getParent().getLastChild();
+          getParent().getKeySet().remove(parentLastKey);
+          InnerNode leftBranch = (InnerNode) parentLastKey.node();
+          getParent().setRightMost(new Key(leftBranch));
+          leftBranch.add(new Key(parentLastKey.indexKey(), leftBranch.getRightMost().node()));
+          leftBranch.setRightMost(new Key(remainingKey.node()));
+        }
+      }
+    }
+  }
+
+  private boolean isBinaryNode() {
+    return getTotalSize() == 2 && rightMost != null;
+  }
+
+  private Key getLastKeyOrRightmost() {
+    return keySet.isEmpty() ? rightMost : keySet.first();
+  }
+
+  private boolean isUnbalanced() {
+    return getTotalSize() == 1;
   }
 
   private int getTotalSize() {
@@ -202,5 +277,10 @@ public class InnerNode extends Node implements Iterable<Key> {
 
   public List<String> getIndexKeys() {
     return keySet.stream().map(Key::indexKey).map(Object::toString).toList();
+  }
+
+  public Key getLastChild() {
+    if (keySet.isEmpty()) { return null; }
+    return keySet.last();
   }
 }

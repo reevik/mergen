@@ -15,6 +15,7 @@
  */
 package net.reevik.mergen.index;
 
+import java.util.List;
 import java.util.Set;
 import net.reevik.mikron.annotation.ManagedApplication;
 import org.junit.jupiter.api.Test;
@@ -31,7 +32,7 @@ class BTreeIndexTest {
     bTreeIndex.upsert(createRecord("700", "700"));
     bTreeIndex.upsert(createRecord("300", "300"));
     bTreeIndex.upsert(createRecord("450", "450"));
-    Set<DataRecord> query = bTreeIndex.query("450");
+    List<DataRecord> query = bTreeIndex.query("450");
   }
 
   static DataEntity createRecord(String indexKey, String payload) {

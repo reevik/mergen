@@ -51,6 +51,5 @@ public class DiskAccessController implements Closeable {
 
   @Override
   public void close() throws IOException {
-
   }
 }

@@ -15,14 +15,17 @@
  */
 package net.reevik.mergen.index;
 
+import java.util.List;
 import java.util.Set;
 import net.reevik.mergen.io.DiskAccessController;
+import net.reevik.mikron.annotation.Dynamic;
 import net.reevik.mikron.annotation.Initialize;
 import net.reevik.mikron.annotation.Managed;
 import net.reevik.mikron.annotation.Wire;
 
 @Managed
 public class BTreeIndex implements NodeObserver {
+
   static final int ORDER = 4;
   private Node root;
 
@@ -46,8 +49,12 @@ public class BTreeIndex implements NodeObserver {
     root.doUpsert(dataEntity);
   }
 
-  public Set<DataRecord> query(String indexKey) {
-    return root.doQuery(indexKey);
+  public List<DataRecord> query(String indexKey) {
+    return root.doQuery(indexKey, (keyData, dataNode) -> keyData.dataRecord());
+  }
+
+  public List<DataRecord> delete(String indexKey) {
+    return root.doQuery(indexKey, (keyData, dataNode) -> dataNode.delete(indexKey));
   }
 
   @Override

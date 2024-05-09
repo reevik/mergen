@@ -16,19 +16,10 @@
 package net.reevik.mergen.index;
 
 import java.nio.ByteBuffer;
-import java.util.Objects;
 import net.reevik.mergen.io.DiskAccessController;
 import net.reevik.mergen.io.PageRef;
 
-public class KeyData implements Comparable<KeyData> {
-
-  private final Object indexKey;
-  private final DataRecord dataRecord;
-
-  public KeyData(Object indexKey, DataRecord dataRecord) {
-    this.indexKey = indexKey;
-    this.dataRecord = dataRecord;
-  }
+public record KeyData(Object indexKey, DataRecord dataRecord) implements Comparable<KeyData> {
 
   public ByteBuffer serialize() {
     var indexKeyInBytes = indexKey.toString().getBytes();
@@ -50,35 +41,5 @@ public class KeyData implements Comparable<KeyData> {
   @Override
   public int compareTo(KeyData o) {
     return indexKey.toString().compareTo(o.indexKey.toString());
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    KeyData keyData = (KeyData) o;
-    return Objects.equals(indexKey, keyData.indexKey);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(indexKey);
-  }
-
-  @Override
-  public String toString() {
-    return "KeyData{" + "indexKey=" + indexKey + ", dataRecord=" + dataRecord + '}';
-  }
-
-  public Object getIndexKey() {
-    return indexKey;
-  }
-
-  public DataRecord getDataRecord() {
-    return dataRecord;
   }
 }

@@ -41,8 +41,8 @@ class KeyDataTest {
     var deserializedKeyData = KeyData.deserialize(ByteBuffer.wrap(keyDataInBytes),
         diskAccessController);
     assertThat(deserializedKeyData).isNotNull();
-    assertThat(deserializedKeyData.getIndexKey()).isEqualTo(INDEX_KEY);
-    assertThat(deserializedKeyData.getDataRecord()).isNotNull();
-    assertThat(deserializedKeyData.getDataRecord().getPageRef()).isEqualTo(PageRef.of(OFFSET));
+    assertThat(deserializedKeyData.indexKey()).isEqualTo(INDEX_KEY);
+    assertThat(deserializedKeyData.dataRecord()).isNotNull();
+    assertThat(deserializedKeyData.dataRecord().getPageRef()).isEqualTo(PageRef.of(OFFSET));
   }
 }

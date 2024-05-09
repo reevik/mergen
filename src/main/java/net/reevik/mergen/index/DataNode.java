@@ -17,9 +17,13 @@ package net.reevik.mergen.index;
 
 import static net.reevik.mergen.index.DataRecord.createNew;
 
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.BiFunction;
+import javax.xml.crypto.Data;
 import net.reevik.mergen.io.DiskAccessController;
 import net.reevik.mergen.io.Page;
 import net.reevik.mergen.io.Page.PageType;
@@ -38,17 +42,14 @@ public class DataNode extends Node implements Iterable<KeyData> {
   }
 
   public static DataNode deserialize(Page page, DiskAccessController controller) {
-    var dataNode = new DataNode(page.getPageRef(), controller);
-    for (var nextCell : page) {
-      var deserialize = KeyData.deserialize(nextCell, controller);
-      dataNode.add(deserialize);
-    }
+    DataNode dataNode = new DataNode(page.getPageRef(), controller);
+    page.forEach(nextCell -> dataNode.add(KeyData.deserialize(nextCell, controller)));
     return dataNode;
   }
 
   @Override
   public Page serialize() {
-    var page = new Page(this);
+    Page page = new Page(this);
     keyDataSet.forEach(keyData -> page.appendCell(keyData.serialize()));
     return page;
   }
@@ -57,17 +58,38 @@ public class DataNode extends Node implements Iterable<KeyData> {
     super(PageRef.empty(), diskAccessController);
   }
 
-  public void add(DataEntity dataEntity) {
+  public DataNode add(DataEntity dataEntity) {
     add(new KeyData(dataEntity.indexKey(), createNew(dataEntity, getDiskAccessController())));
     markDirty();
+    return this;
   }
 
-  public void add(KeyData dataRecord) {
-    keyDataSet.add(dataRecord);
+  public DataNode add(KeyData keyData) {
+    keyDataSet.add(keyData);
     markDirty();
     if (keyDataSet.size() >= BTreeIndex.ORDER - 1) {
       split();
     }
+    return this;
+  }
+
+  public DataNode add(Object indexKey, DataRecord dataRecord) {
+    return add(new KeyData(indexKey, dataRecord));
+  }
+
+  DataRecord delete(String indexKey) {
+    KeyData deletedKeyData = null;
+    for (var keyData : keyDataSet) {
+      if (keyData.indexKey().equals(indexKey)) {
+        keyDataSet.remove(keyData);
+        deletedKeyData = keyData;
+        break;
+      }
+    }
+    if (keyDataSet.isEmpty()) {
+      getParent().delete(indexKey);
+    }
+    return deletedKeyData != null ? deletedKeyData.dataRecord() : null;
   }
 
   private void split() {
@@ -110,7 +132,7 @@ public class DataNode extends Node implements Iterable<KeyData> {
 
   private Key newLeftNodeKey(DataNode leftNode) {
     leftNode.setParent(getParent());
-    return new Key(keyDataSet.getFirst().getIndexKey(), leftNode);
+    return new Key(keyDataSet.getFirst().indexKey(), leftNode);
   }
 
   private InnerNode newRoot() {
@@ -126,7 +148,7 @@ public class DataNode extends Node implements Iterable<KeyData> {
 
   @Override
   Object getFirstIndexKey() {
-    return keyDataSet.first().getIndexKey();
+    return keyDataSet.first().indexKey();
   }
 
   @Override
@@ -135,13 +157,14 @@ public class DataNode extends Node implements Iterable<KeyData> {
   }
 
   @Override
-  Set<DataRecord> doQuery(String query) {
+  List<DataRecord> doQuery(String query, BiFunction<KeyData, DataNode, DataRecord> operation) {
+    List<DataRecord> result = new ArrayList<>();
     for (var dataKey : keyDataSet) {
-      if (dataKey.getIndexKey().equals(query)) {
-        return Set.of(dataKey.getDataRecord());
+      if (dataKey.indexKey().equals(query)) {
+        result.add(operation.apply(dataKey, this));
       }
     }
-    return Set.of();
+    return result;
   }
 
   @Override
@@ -154,15 +177,11 @@ public class DataNode extends Node implements Iterable<KeyData> {
     return Type.DATA;
   }
 
-  public Set<KeyData> getKeyDataSet() {
-    return keyDataSet;
-  }
-
   @Override
   public PageRef persist() {
-    var page = new Page(this);
-    var offset = getDiskAccessController().write(page);
-    var pageRef = new PageRef(offset);
+    Page page = new Page(this);
+    long offset = getDiskAccessController().write(page);
+    PageRef pageRef = new PageRef(offset);
     markSynced();
     return pageRef;
   }
@@ -175,6 +194,10 @@ public class DataNode extends Node implements Iterable<KeyData> {
   @Override
   public Iterator<KeyData> iterator() {
     return keyDataSet.iterator();
+  }
+
+  public Set<KeyData> getKeyDataSet() {
+    return keyDataSet;
   }
 
   public boolean contains(KeyData keyData) {

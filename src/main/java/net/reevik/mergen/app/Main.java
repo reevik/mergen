@@ -1,5 +1,6 @@
 package net.reevik.mergen.app;
 
+import java.util.List;
 import java.util.Set;
 import java.util.function.Supplier;
 import net.reevik.mergen.index.BTreeIndex;
@@ -21,7 +22,7 @@ public class Main {
       bTreeIndex.upsert(createRecord("700", "700"));
       bTreeIndex.upsert(createRecord("300", "300"));
       bTreeIndex.upsert(createRecord("450", "450"));
-      Set<DataRecord> query = bTreeIndex.query("450");
+      List<DataRecord> query = bTreeIndex.query("450");
       System.out.println(query);
     } catch (Exception e) {
       throw new RuntimeException(e);

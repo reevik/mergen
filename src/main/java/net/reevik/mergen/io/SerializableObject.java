@@ -22,13 +22,16 @@ import static net.reevik.mergen.index.SyncState.UNSYNCED;
 import net.reevik.mergen.index.SyncState;
 import net.reevik.mergen.io.Page.PageType;
 
+/**
+ * Serializable object is used to persist the data into disk.
+ */
 public abstract class SerializableObject {
 
-  private SyncState syncState;
   private final PageRef pageRef;
+  private final DiskAccessController diskAccessController;
+  private SyncState syncState;
   private PageRef parentPageRef = PageRef.empty();
   private PageRef siblingPageRef = PageRef.empty();
-  private final DiskAccessController diskAccessController;
 
   public SerializableObject(PageRef pageRef, DiskAccessController diskAccessController) {
     this.pageRef = pageRef;
