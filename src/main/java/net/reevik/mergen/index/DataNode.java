@@ -86,7 +86,7 @@ public class DataNode extends Node implements Iterable<KeyData> {
         break;
       }
     }
-    if (keyDataSet.isEmpty()) {
+    if (keyDataSet.isEmpty() && hasParent()) {
       getParent().delete(indexKey);
     }
     return deletedKeyData != null ? deletedKeyData.dataRecord() : null;
@@ -132,6 +132,7 @@ public class DataNode extends Node implements Iterable<KeyData> {
 
   private Key newLeftNodeKey(DataNode leftNode) {
     leftNode.setParent(getParent());
+    leftNode.registerObservers(getNodeObservers());
     return new Key(keyDataSet.getFirst().indexKey(), leftNode);
   }
 
@@ -157,14 +158,9 @@ public class DataNode extends Node implements Iterable<KeyData> {
   }
 
   @Override
-  List<DataRecord> doQuery(String query, BiFunction<KeyData, DataNode, DataRecord> operation) {
-    List<DataRecord> result = new ArrayList<>();
-    for (var dataKey : keyDataSet) {
-      if (dataKey.indexKey().equals(query)) {
-        result.add(operation.apply(dataKey, this));
-      }
-    }
-    return result;
+  List<DataRecord> doQuery(String query, BiFunction<List<KeyData>, DataNode, List<DataRecord>> operation) {
+    List<KeyData> results = keyDataSet.stream().filter(keyData -> keyData.indexKey().equals(query)).toList();
+    return operation.apply(results, this);
   }
 
   @Override

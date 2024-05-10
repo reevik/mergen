@@ -63,12 +63,12 @@ public abstract class Node extends SerializableObject {
   abstract void doUpsert(DataEntity entity);
 
   public List<DataRecord> query(String queryString,
-      BiFunction<KeyData, DataNode, DataRecord> operation) {
+      BiFunction<List<KeyData>, DataNode, List<DataRecord>> operation) {
     return doQuery(queryString, operation);
   }
 
   abstract List<DataRecord> doQuery(String queryString,
-      BiFunction<KeyData, DataNode, DataRecord> operation);
+      BiFunction<List<KeyData>, DataNode, List<DataRecord>> operation);
 
   public int getSize() {
     return doGetSize();

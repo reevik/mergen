@@ -59,7 +59,7 @@ public class InnerNode extends Node implements Iterable<Key> {
   }
 
   @Override
-  List<DataRecord> doQuery(String indexQuery, BiFunction<KeyData, DataNode, DataRecord> operation) {
+  List<DataRecord> doQuery(String indexQuery, BiFunction<List<KeyData>, DataNode, List<DataRecord>> operation) {
     for (var key : keySet) {
       if (indexQuery.compareTo(key.indexKey().toString()) < 0) {
         return key.node().doQuery(indexQuery, operation);
@@ -82,7 +82,7 @@ public class InnerNode extends Node implements Iterable<Key> {
 
   void delete(String indexKey) {
     keySet.removeIf(key -> indexKey.compareTo(key.indexKey().toString()) < 0);
-    if (rightMost.indexKey().toString().compareTo(indexKey) >= 0) {
+    if (indexKey.compareTo(rightMost.indexKey().toString()) >= 0) {
       rightMost = null;
       if (keySet.size() >= 2) {
         var lastKey = keySet.last();
@@ -91,11 +91,13 @@ public class InnerNode extends Node implements Iterable<Key> {
       }
     }
     // If the current node has a single child.
-    if (isUnbalanced()) {
+    if (isUnbalanced() && hasParent()) {
       Key remainingKey = getLastKeyOrRightmost();
       if (getParent().isBinaryNode()) {
         Key parentKey = getParent().getLastKeyOrRightmost();
-        if (parentKey.compareTo(remainingKey) > 0) {
+        if ((remainingKey.isRightMost() &&
+            parentKey.indexKey().toString().compareTo(remainingKey.node().firstIndexKey().toString()) >= 0) ||
+            parentKey.compareTo(remainingKey) > 0) {
           // merge the parent to the right branch.
           var rightBranchInner = (InnerNode) getParent().getRightMost().node();
           rightBranchInner.add(new Key(parentKey.indexKey(), remainingKey.node()));
@@ -174,10 +176,12 @@ public class InnerNode extends Node implements Iterable<Key> {
     for (var key : keySet) {
       if (++counter < midPoint) {
         leftNode.add(key);
+        key.node().setParent(leftNode);
       } else {
         break;
       }
     }
+    leftNode.registerObservers(getNodeObservers());
     removeItems(leftNode);
     attachToParent(leftNode);
   }

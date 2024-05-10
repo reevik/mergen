@@ -50,18 +50,17 @@ public class BTreeIndex implements NodeObserver {
   }
 
   public List<DataRecord> query(String indexKey) {
-    return root.doQuery(indexKey, (keyData, dataNode) -> keyData.dataRecord());
+    return root.doQuery(indexKey,
+        (keyData, dataNode) -> keyData.stream().map(KeyData::dataRecord).toList());
   }
 
   public List<DataRecord> delete(String indexKey) {
-    return root.doQuery(indexKey, (keyData, dataNode) -> dataNode.delete(indexKey));
+    return root.doQuery(indexKey, (keyData, dataNode) ->
+        keyData.stream().map(kd -> dataNode.delete(kd.indexKey().toString())).toList());
   }
 
   @Override
   public void onNewRoot(Node newRoot) {
     root = newRoot;
-  }
-
-  public void load() {
   }
 }
