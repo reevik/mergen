@@ -18,7 +18,7 @@ package net.reevik.mergen.index;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.ByteBuffer;
-import net.reevik.mergen.io.DiskAccessController;
+import net.reevik.mergen.io.DiskController;
 import net.reevik.mergen.io.PageRef;
 import net.reevik.mikron.annotation.ManagedApplication;
 import net.reevik.mikron.annotation.Wire;
@@ -30,7 +30,7 @@ class KeyDataTest {
   private static final String INDEX_KEY = "index-key";
 
   @Wire
-  private DiskAccessController diskAccessController;
+  private DiskController diskAccessController;
 
   @Test
   void testSerializeKeyData() {

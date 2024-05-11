@@ -24,7 +24,7 @@ import net.reevik.mikron.annotation.Initialize;
 import net.reevik.mikron.annotation.Managed;
 
 @Managed(name = "diskAccessController")
-public class DiskAccessController implements Closeable {
+public class DiskController implements Closeable {
 
   @Configurable(name = "fileName")
   private String fileName;

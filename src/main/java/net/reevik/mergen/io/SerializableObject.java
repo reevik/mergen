@@ -28,18 +28,18 @@ import net.reevik.mergen.io.Page.PageType;
 public abstract class SerializableObject {
 
   private final PageRef pageRef;
-  private final DiskAccessController diskAccessController;
+  private final DiskController diskAccessController;
   private SyncState syncState;
   private PageRef parentPageRef = PageRef.empty();
   private PageRef siblingPageRef = PageRef.empty();
 
-  public SerializableObject(PageRef pageRef, DiskAccessController diskAccessController) {
+  public SerializableObject(PageRef pageRef, DiskController diskAccessController) {
     this.pageRef = pageRef;
     this.diskAccessController = diskAccessController;
   }
 
   public SerializableObject(PageRef pageRef, PageRef parentPageRef,
-      DiskAccessController diskAccessController) {
+      DiskController diskAccessController) {
     this.pageRef = pageRef;
     this.parentPageRef = parentPageRef;
     this.diskAccessController = diskAccessController;
@@ -90,7 +90,7 @@ public abstract class SerializableObject {
     return siblingPageRef;
   }
 
-  public DiskAccessController getDiskAccessController() {
+  public DiskController getDiskAccessController() {
     return diskAccessController;
   }
 

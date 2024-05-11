@@ -17,14 +17,12 @@ package net.reevik.mergen.index;
 
 import static net.reevik.mergen.index.DataRecord.createNew;
 
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.BiFunction;
-import javax.xml.crypto.Data;
-import net.reevik.mergen.io.DiskAccessController;
+import net.reevik.mergen.io.DiskController;
 import net.reevik.mergen.io.Page;
 import net.reevik.mergen.io.Page.PageType;
 import net.reevik.mergen.io.PageRef;
@@ -33,15 +31,15 @@ public class DataNode extends Node implements Iterable<KeyData> {
 
   private final TreeSet<KeyData> keyDataSet = new TreeSet<>();
 
-  public DataNode(PageRef pageRef, DiskAccessController diskAccessController) {
+  public DataNode(PageRef pageRef, DiskController diskAccessController) {
     super(pageRef, diskAccessController);
   }
 
-  public DataNode(Page page, DiskAccessController diskAccessController) {
+  public DataNode(Page page, DiskController diskAccessController) {
     super(page.getPageRef(), diskAccessController);
   }
 
-  public static DataNode deserialize(Page page, DiskAccessController controller) {
+  public static DataNode deserialize(Page page, DiskController controller) {
     DataNode dataNode = new DataNode(page.getPageRef(), controller);
     page.forEach(nextCell -> dataNode.add(KeyData.deserialize(nextCell, controller)));
     return dataNode;
@@ -54,7 +52,7 @@ public class DataNode extends Node implements Iterable<KeyData> {
     return page;
   }
 
-  public DataNode(DiskAccessController diskAccessController) {
+  public DataNode(DiskController diskAccessController) {
     super(PageRef.empty(), diskAccessController);
   }
 

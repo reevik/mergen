@@ -20,7 +20,7 @@ import static net.reevik.mergen.index.Key.KeyType.RMN;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 import net.reevik.mergen.index.Node.Type;
-import net.reevik.mergen.io.DiskAccessController;
+import net.reevik.mergen.io.DiskController;
 import net.reevik.mergen.io.PageRef;
 
 public class Key implements Comparable<Key> {
@@ -55,7 +55,7 @@ public class Key implements Comparable<Key> {
     return buffer;
   }
 
-  public static Key deserialize(ByteBuffer byteBuffer, DiskAccessController controller) {
+  public static Key deserialize(ByteBuffer byteBuffer, DiskController controller) {
     var nodeType = Node.Type.values()[byteBuffer.getInt()];
     var nodeOffset = byteBuffer.getLong();
     var indeyKeySize = byteBuffer.capacity() - Long.BYTES - Integer.BYTES;

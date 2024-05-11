@@ -18,7 +18,7 @@ package net.reevik.mergen.index;
 import static net.reevik.mergen.index.Key.KeyType.RMN;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
-import net.reevik.mergen.io.DiskAccessController;
+import net.reevik.mergen.io.DiskController;
 import net.reevik.mergen.io.PageRef;
 import net.reevik.mikron.annotation.ManagedApplication;
 import net.reevik.mikron.annotation.Wire;
@@ -29,7 +29,7 @@ import org.junit.jupiter.api.Test;
 class InnerNodeTest {
 
   @Wire
-  private DiskAccessController diskAccessController;
+  private DiskController diskAccessController;
 
   /*
    * It ensures that the inner node split happens after it reaches its the capacity. Post split,

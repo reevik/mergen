@@ -16,7 +16,7 @@
 package net.reevik.mergen.index;
 
 import java.nio.ByteBuffer;
-import net.reevik.mergen.io.DiskAccessController;
+import net.reevik.mergen.io.DiskController;
 import net.reevik.mergen.io.PageRef;
 
 public record KeyData(Object indexKey, DataRecord dataRecord) implements Comparable<KeyData> {
@@ -29,7 +29,7 @@ public record KeyData(Object indexKey, DataRecord dataRecord) implements Compara
     return buffer;
   }
 
-  public static KeyData deserialize(ByteBuffer byteBuffer, DiskAccessController controller) {
+  public static KeyData deserialize(ByteBuffer byteBuffer, DiskController controller) {
     long dataRecordOffset = byteBuffer.getLong();
     int indeyKeySize = byteBuffer.capacity() - Long.BYTES;
     byte[] indexKey = new byte[indeyKeySize];

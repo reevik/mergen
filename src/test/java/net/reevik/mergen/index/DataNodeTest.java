@@ -18,7 +18,7 @@ package net.reevik.mergen.index;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.function.Consumer;
-import net.reevik.mergen.io.DiskAccessController;
+import net.reevik.mergen.io.DiskController;
 import net.reevik.mikron.annotation.ManagedApplication;
 import net.reevik.mikron.annotation.Wire;
 import org.junit.jupiter.api.Test;
@@ -27,7 +27,7 @@ import org.junit.jupiter.api.Test;
 class DataNodeTest {
 
   @Wire
-  private DiskAccessController diskAccessController;
+  private DiskController diskAccessController;
 
   @Test
   void testSplitDataWithoutParent() {

@@ -17,7 +17,7 @@ package net.reevik.mergen.index;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import net.reevik.mergen.io.DiskAccessController;
+import net.reevik.mergen.io.DiskController;
 import net.reevik.mergen.io.Page;
 import net.reevik.mergen.io.PageRef;
 import net.reevik.mikron.annotation.ManagedApplication;
@@ -28,7 +28,7 @@ import org.junit.jupiter.api.Test;
 class DataRecordTest {
 
   @Wire
-  private DiskAccessController diskAccessController;
+  private DiskController diskAccessController;
 
   @Test
   void testSerializeDataRecords() {

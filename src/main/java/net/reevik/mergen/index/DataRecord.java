@@ -17,7 +17,7 @@ package net.reevik.mergen.index;
 
 import java.nio.ByteBuffer;
 import java.util.Iterator;
-import net.reevik.mergen.io.DiskAccessController;
+import net.reevik.mergen.io.DiskController;
 import net.reevik.mergen.io.Page;
 import net.reevik.mergen.io.Page.PageType;
 import net.reevik.mergen.io.PageRef;
@@ -27,18 +27,18 @@ public class DataRecord extends SerializableObject {
   private byte[] payload = new byte[0];
   private int size;
 
-  public DataRecord(byte[] payload, PageRef pageRef, DiskAccessController diskAccessController) {
+  public DataRecord(byte[] payload, PageRef pageRef, DiskController diskAccessController) {
     super(pageRef, diskAccessController);
     this.payload = payload;
     markSynced();
   }
 
-  public DataRecord(PageRef pageRef, DiskAccessController diskAccessController) {
+  public DataRecord(PageRef pageRef, DiskController diskAccessController) {
     super(pageRef, diskAccessController);
     markUnsynced();
   }
 
-  public DataRecord(byte[] payload, DiskAccessController diskAccessController) {
+  public DataRecord(byte[] payload, DiskController diskAccessController) {
     super(new PageRef(-1), diskAccessController);
     this.payload = payload;
     markDirty();
@@ -71,25 +71,25 @@ public class DataRecord extends SerializableObject {
     return "DataRecord{" + "payload=" + new String(payload) + '}';
   }
 
-  public static DataRecord createSynced(PageRef ref, byte[] payload, DiskAccessController controller) {
+  public static DataRecord createSynced(PageRef ref, byte[] payload, DiskController controller) {
     var dataRecord = new DataRecord(payload, ref, controller);
     dataRecord.markSynced();
     return dataRecord;
   }
 
-  public static DataRecord createNew(DataEntity dataEntity, DiskAccessController controller) {
+  public static DataRecord createNew(DataEntity dataEntity, DiskController controller) {
     var dataRecord = new DataRecord(dataEntity.payload(), controller);
     dataRecord.markDirty();
     return dataRecord;
   }
 
-  public static DataRecord createNew(byte[] entityPayload, DiskAccessController controller) {
+  public static DataRecord createNew(byte[] entityPayload, DiskController controller) {
     var dataRecord = new DataRecord(entityPayload, controller);
     dataRecord.markDirty();
     return dataRecord;
   }
 
-  public static DataRecord deserialize(Page page, DiskAccessController controller) {
+  public static DataRecord deserialize(Page page, DiskController controller) {
     Iterator<ByteBuffer> iterator = page.iterator();
     if (iterator.hasNext()) {
       return new DataRecord(iterator.next().array(), page.getPageRef(), controller);

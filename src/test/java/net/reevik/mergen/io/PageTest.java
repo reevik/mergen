@@ -29,7 +29,7 @@ import org.junit.jupiter.api.Test;
 public class PageTest {
 
   @Wire(name = "diskAccessController")
-  private DiskAccessController diskAccessController;
+  private DiskController diskAccessController;
 
   @Test
   void testSerializeAndDeserialize() {

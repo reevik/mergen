@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.BiFunction;
-import net.reevik.mergen.io.DiskAccessController;
+import net.reevik.mergen.io.DiskController;
 import net.reevik.mergen.io.Page;
 import net.reevik.mergen.io.Page.PageType;
 import net.reevik.mergen.io.PageRef;
@@ -32,15 +32,15 @@ public class InnerNode extends Node implements Iterable<Key> {
   private final TreeSet<Key> keySet = new TreeSet<>();
   private Key rightMost;
 
-  public InnerNode(PageRef pageRef, DiskAccessController diskAccessController) {
+  public InnerNode(PageRef pageRef, DiskController diskAccessController) {
     super(pageRef, diskAccessController);
   }
 
-  public InnerNode(DiskAccessController diskAccessController) {
+  public InnerNode(DiskController diskAccessController) {
     super(PageRef.empty(), diskAccessController);
   }
 
-  public static InnerNode deserialize(Page page, DiskAccessController controller) {
+  public static InnerNode deserialize(Page page, DiskController controller) {
     InnerNode dataNode = new InnerNode(page.getPageRef(), controller);
     page.forEach(nextCell -> dataNode.add(Key.deserialize(nextCell, controller)));
     return dataNode;

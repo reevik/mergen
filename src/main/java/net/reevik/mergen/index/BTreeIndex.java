@@ -16,9 +16,7 @@
 package net.reevik.mergen.index;
 
 import java.util.List;
-import java.util.Set;
-import net.reevik.mergen.io.DiskAccessController;
-import net.reevik.mikron.annotation.Dynamic;
+import net.reevik.mergen.io.DiskController;
 import net.reevik.mikron.annotation.Initialize;
 import net.reevik.mikron.annotation.Managed;
 import net.reevik.mikron.annotation.Wire;
@@ -30,7 +28,7 @@ public class BTreeIndex implements NodeObserver {
   private Node root;
 
   @Wire
-  private DiskAccessController diskAccessController;
+  private DiskController diskAccessController;
 
   @Initialize
   public void init() {

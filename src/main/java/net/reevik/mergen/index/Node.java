@@ -18,7 +18,7 @@ package net.reevik.mergen.index;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.function.BiFunction;
-import net.reevik.mergen.io.DiskAccessController;
+import net.reevik.mergen.io.DiskController;
 import net.reevik.mergen.io.PageRef;
 import net.reevik.mergen.io.SerializableObject;
 
@@ -40,12 +40,12 @@ public abstract class Node extends SerializableObject {
   private final List<NodeObserver> nodeObservers = new LinkedList<>();
   private InnerNode parent;
 
-  protected Node(PageRef pageRef, DiskAccessController diskAccessController) {
+  protected Node(PageRef pageRef, DiskController diskAccessController) {
     super(pageRef, diskAccessController);
     markUnsynced();
   }
 
-  protected Node(DiskAccessController diskAccessController) {
+  protected Node(DiskController diskAccessController) {
     super(PageRef.empty(), diskAccessController);
     markDirty();
   }
