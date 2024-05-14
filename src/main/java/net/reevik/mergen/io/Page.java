@@ -136,8 +136,11 @@ public class Page implements Iterable<ByteBuffer> {
     return pageBuffer.position(cellIndexPos).getInt();
   }
 
+  public boolean hasSpace(long askedSize) {
+    return getSpaceAvailable() > askedSize;
+  }
+
   public Page appendCell(ByteBuffer cellBuffer) {
-    int occupiedSpace = getOccupiedCellSpace() + cellBuffer.capacity() + Integer.BYTES;
     pageBuffer = pageBuffer.position(getHeadPosition())
         .put(cellBuffer.array())
         .position(PageHeader.CELL_COUNT.offset())
@@ -145,7 +148,7 @@ public class Page implements Iterable<ByteBuffer> {
         .position(getNextCellPointerOffset())
         .putInt(cellBuffer.capacity())
         .position(PageHeader.AVAILABLE.offset())
-        .putInt(pageSize - occupiedSpace);
+        .putInt(getSpaceAvailable());
     return this;
   }
 
@@ -199,12 +202,13 @@ public class Page implements Iterable<ByteBuffer> {
 
   public Page appendHeader() {
     pageBuffer.clear();
-    pageBuffer = pageBuffer.putLong(serializableObject.getPageRef().pageOffset())
-        .putLong(serializableObject.getParentPageRef().pageOffset())
+    pageBuffer = pageBuffer
+        .putLong(serializableObject.getPageRef().pageOffset()) // Page reference.
+        .putLong(serializableObject.getParentPageRef().pageOffset()) // Parent page reference.
         .putLong(nextPage.pageOffset())
-        .putInt(pageSize)
-        .putInt(availableSpace)
-        .putShort(pageType.toShort())
+        .putInt(pageSize) // Page size.
+        .putInt(PAGE_SIZE - PageHeader.getSize() - Long.BYTES) // Available size.
+        .putShort(pageType.toShort()) // Page type.
         .putLong(serializableObject.getSiblingPageRef().pageOffset())
         .putInt(cellCount);
     return this;

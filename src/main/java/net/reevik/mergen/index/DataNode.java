@@ -39,6 +39,10 @@ public class DataNode extends Node implements Iterable<KeyData> {
     super(page.getPageRef(), diskAccessController);
   }
 
+  public DataNode(DiskController diskAccessController) {
+    super(PageRef.empty(), diskAccessController);
+  }
+
   public static DataNode deserialize(Page page, DiskController controller) {
     DataNode dataNode = new DataNode(page.getPageRef(), controller);
     page.forEach(nextCell -> dataNode.add(KeyData.deserialize(nextCell, controller)));
@@ -50,10 +54,6 @@ public class DataNode extends Node implements Iterable<KeyData> {
     Page page = new Page(this);
     keyDataSet.forEach(keyData -> page.appendCell(keyData.serialize()));
     return page;
-  }
-
-  public DataNode(DiskController diskAccessController) {
-    super(PageRef.empty(), diskAccessController);
   }
 
   public DataNode add(DataEntity dataEntity) {
@@ -85,7 +85,7 @@ public class DataNode extends Node implements Iterable<KeyData> {
       }
     }
     if (keyDataSet.isEmpty() && hasParent()) {
-      getParent().delete(indexKey);
+      getParent().deleteNodeAndRebalanceBy(indexKey);
     }
     return deletedKeyData != null ? deletedKeyData.dataRecord() : null;
   }

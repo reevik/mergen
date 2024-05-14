@@ -27,9 +27,47 @@ import net.reevik.mergen.io.Page;
 import net.reevik.mergen.io.Page.PageType;
 import net.reevik.mergen.io.PageRef;
 
+/**
+ * <p>
+ * Inner nodes are the ones, which are the ascendants of leaf nodes including the root node. If
+ * their capacity is reached, they will split into two equal-sized inner node while increasing the
+ * number of children in their parents. If the parent also reaches its max. capacity, it also splits
+ * into two equal-sized inner node, and the split process will be terminated, either one of the
+ * ascendants have enough capacity for the new inner-child or a new root has to be created.
+ * </p>
+ * <p>
+ * An inner node is either a root node or one of the descendants of the current root. If the root
+ * node needs to split, then a new root node will be created and two inner nodes, which are the
+ * product of the split, become the direct children of the new root node.
+ * </p>
+ * <p>
+ * Every inner node keeps track of its direct children in a {@link Set} of {@link Key}, which are
+ * references to the children for an index range key. The set is sorted by the index range key, and
+ * each reference is a link to a child, of which index range keys are smaller than reference's.
+ * Children of an inner node is either another inner node or a {@link DataNode}.
+ * </p>
+ * <p>
+ * The right most reference points to the child node, of which index range key is equals and bigger
+ * than the previous sibling. It means, the number of children of an inner node is one greater than
+ * the index range key. All index range keys are maintaining references to children, of which index
+ * range keys are smaller than their parents, but the last children that is referenced by the right
+ * most reference, is greater than all other siblings.
+ * </p>
+ *
+ * @author Erhan Bagdemir
+ * @version 1.0
+ */
 public class InnerNode extends Node implements Iterable<Key> {
 
+  /**
+   * A sorted set of references to the children.
+   */
   private final TreeSet<Key> keySet = new TreeSet<>();
+
+  /**
+   * The right most key, which is a reference to a child, of which index range keys are greater than
+   * its sibling.
+   */
   private Key rightMost;
 
   public InnerNode(PageRef pageRef, DiskController diskAccessController) {
@@ -59,7 +97,8 @@ public class InnerNode extends Node implements Iterable<Key> {
   }
 
   @Override
-  List<DataRecord> doQuery(String indexQuery, BiFunction<List<KeyData>, DataNode, List<DataRecord>> operation) {
+  List<DataRecord> doQuery(String indexQuery,
+      BiFunction<List<KeyData>, DataNode, List<DataRecord>> operation) {
     for (var key : keySet) {
       if (indexQuery.compareTo(key.indexKey().toString()) < 0) {
         return key.node().doQuery(indexQuery, operation);
@@ -80,7 +119,111 @@ public class InnerNode extends Node implements Iterable<Key> {
     }
   }
 
-  void delete(String indexKey) {
+  /**
+   * <p>
+   * The method deletes a node by index key and rebalances the tree if a node remains unbalanced.
+   * Unbalanced nodes need to be eliminated by reassigning their remaining child to the unbalanced
+   * one's parent and moving the parent to the sibling:
+   * </p>
+   * <pre>
+   *      100                  50  100              100                 100 150
+   *    50   150 (*)   =>     A   B   160     (*) 50   150     =>     40   A   B
+   *   A  B     160                             40    A   B
+   * </pre>
+   * <p>
+   * The nodes which are marked with "*" are unbalanced ones with a single child, so they are to be
+   * eliminated. Unbalanced nodes' children will be assigned to their parent, and the parent is to
+   * join the sibling.
+   * </p>
+   *
+   * @param indexKey Index key of the node to be deleted.
+   */
+  void deleteNodeAndRebalanceBy(String indexKey) {
+    // Remove the node by the index key in the current node. The current now may be left in
+    // unbalanced state, which will be handled below.
+    if (removeNodeKeyBy(indexKey) && hasParent()) {
+      var remainingKey = getLastKeyOrRightmost();
+      var parent = getParent();
+      if (parent.isBinaryNode()) {
+        var parentKey = parent.getLastKeyOrRightmost();
+        if (isRemainingInTheLeftBranch(remainingKey, parentKey)) {
+          mergeParentToRightSibling(parentKey, remainingKey);
+        } else {
+          mergeParentToLeftSibling(parentKey, remainingKey);
+        }
+      } else {
+        removeKeyOnABalancedNode(remainingKey, parent);
+      }
+    }
+  }
+
+  private void removeKeyOnABalancedNode(Key remainingKey, InnerNode node) {
+    if (node.isUnbalanced()) {
+      throw new IllegalArgumentException("The node must be balanced.");
+    }
+    Iterator<Key> iterator = node.getKeySet().iterator();
+    while (iterator.hasNext()) {
+      Key nextKey = iterator.next();
+      if (nextKey.compareTo(remainingKey) > 0) {
+        InnerNode rightBranchInner = iterator.hasNext() ?
+            (InnerNode) iterator.next().node() :
+            (InnerNode) node.getRightMost().node();
+        rightBranchInner.add(new Key(nextKey.indexKey(), remainingKey.node()));
+        node.getKeySet().remove(nextKey);
+      }
+    }
+    if (remainingKey.compareTo(node.getRightMost()) >= 0) {
+      Key lastKey = node.getLastChild();
+      node.getKeySet().remove(lastKey);
+      InnerNode leftBranch = (InnerNode) lastKey.node();
+      node.setRightMost(new Key(leftBranch));
+      leftBranch.add(new Key(lastKey.indexKey(), leftBranch.getRightMost().node()));
+      leftBranch.setRightMost(new Key(remainingKey.node()));
+    }
+  }
+
+  // There are two possibilities here, 1) remaining key is the right most. In this case, the
+  // first child of the right most must be compared with the parent because the right most key
+  // doesn't contain index keys to compare. 2) remaining key is a left-side branch with an index
+  // key, so we can compare it with the parent to determine if the remaining node resides in the
+  // left branch of the parent.
+  private boolean isRemainingInTheLeftBranch(Key remainingKey, Key parentKey) {
+    return (remainingKey.isRightMost() &&
+        parentKey.indexKey().toString().compareTo(remainingKey.node().firstIndexKey().toString())
+            >= 0) ||
+        parentKey.compareTo(remainingKey) > 0;
+  }
+
+  // Move the parent node to the left sibling of the remaining, because the unbalanced node is in
+  // the right branch of the parent, i.e., the unbalanced node mustn't survive on its own. The
+  // parent becomes the new parent of the unbalanced one's child while moving it to the left
+  // sibling.
+  private void mergeParentToLeftSibling(Key parentKey, Key remainingKey) {
+    InnerNode leftBranchInner = (InnerNode) getParent().getLastKeyOrRightmost().node();
+    leftBranchInner.add(new Key(parentKey.indexKey(), remainingKey.node()));
+    if (getParent().getParent() != null) {
+      leftBranchInner.setParent(getParent().getParent());
+    } else {
+      leftBranchInner.setParent(null);
+      notifyObservers(leftBranchInner);
+    }
+    leftBranchInner.setParent(null);
+    notifyObservers(leftBranchInner);
+  }
+
+  // Same as mergeParentToLeftSibling but moves the parent to the right branch.
+  private void mergeParentToRightSibling(Key parentKey, Key remainingKey) {
+    InnerNode rightBranchInner = (InnerNode) getParent().getRightMost().node();
+    rightBranchInner.add(new Key(parentKey.indexKey(), remainingKey.node()));
+    if (getParent().getParent() != null) {
+      rightBranchInner.setParent(getParent().getParent());
+    } else {
+      rightBranchInner.setParent(null);
+      notifyObservers(rightBranchInner);
+    }
+  }
+
+  private boolean removeNodeKeyBy(String indexKey) {
     keySet.removeIf(key -> indexKey.compareTo(key.indexKey().toString()) < 0);
     if (indexKey.compareTo(rightMost.indexKey().toString()) >= 0) {
       rightMost = null;
@@ -90,58 +233,8 @@ public class InnerNode extends Node implements Iterable<Key> {
         keySet.remove(lastKey);
       }
     }
-    // If the current node has a single child.
-    if (isUnbalanced() && hasParent()) {
-      Key remainingKey = getLastKeyOrRightmost();
-      if (getParent().isBinaryNode()) {
-        Key parentKey = getParent().getLastKeyOrRightmost();
-        if ((remainingKey.isRightMost() &&
-            parentKey.indexKey().toString().compareTo(remainingKey.node().firstIndexKey().toString()) >= 0) ||
-            parentKey.compareTo(remainingKey) > 0) {
-          // merge the parent to the right branch.
-          var rightBranchInner = (InnerNode) getParent().getRightMost().node();
-          rightBranchInner.add(new Key(parentKey.indexKey(), remainingKey.node()));
-          if (getParent().getParent() != null) {
-            rightBranchInner.setParent(getParent().getParent());
-          } else {
-            rightBranchInner.setParent(null);
-            notifyObservers(rightBranchInner);
-          }
-        } else {
-          // merge the parent to the left branch.
-          var leftBranchInner = (InnerNode) getParent().getLastKeyOrRightmost().node();
-          leftBranchInner.add(new Key(parentKey.indexKey(), remainingKey.node()));
-          if (getParent().getParent() != null) {
-            leftBranchInner.setParent(getParent().getParent());
-          } else {
-            leftBranchInner.setParent(null);
-            notifyObservers(leftBranchInner);
-          }
-          leftBranchInner.setParent(null);
-          notifyObservers(leftBranchInner);
-        }
-      } else {
-        Iterator<Key> iterator = getParent().getKeySet().iterator();
-        while (iterator.hasNext()) {
-          Key nextOnParent = iterator.next();
-          if (nextOnParent.compareTo(remainingKey) > 0) {
-            InnerNode rightBranchInner = iterator.hasNext() ?
-                (InnerNode) iterator.next().node() :
-                (InnerNode) getParent().getRightMost().node();
-            rightBranchInner.add(new Key(nextOnParent.indexKey(), remainingKey.node()));
-            getParent().getKeySet().remove(nextOnParent);
-          }
-        }
-        if (remainingKey.compareTo(getParent().getRightMost()) >= 0) {
-          Key parentLastKey = getParent().getLastChild();
-          getParent().getKeySet().remove(parentLastKey);
-          InnerNode leftBranch = (InnerNode) parentLastKey.node();
-          getParent().setRightMost(new Key(leftBranch));
-          leftBranch.add(new Key(parentLastKey.indexKey(), leftBranch.getRightMost().node()));
-          leftBranch.setRightMost(new Key(remainingKey.node()));
-        }
-      }
-    }
+
+    return isUnbalanced();
   }
 
   private boolean isBinaryNode() {
@@ -284,7 +377,9 @@ public class InnerNode extends Node implements Iterable<Key> {
   }
 
   public Key getLastChild() {
-    if (keySet.isEmpty()) { return null; }
+    if (keySet.isEmpty()) {
+      return null;
+    }
     return keySet.last();
   }
 }
