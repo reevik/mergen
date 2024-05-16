@@ -142,17 +142,20 @@ public class InnerNode extends Node implements Iterable<Key> {
     // Remove the node by the index key in the current node. The current now may be left in
     // unbalanced state, which will be handled below.
     if (removeNodeKeyBy(indexKey) && hasParent()) {
-      var remainingKey = getLastKeyOrRightmost();
+      var remainingKeyOnNode = getLastKeyOrRightmost();
       var parent = getParent();
       if (parent.isBinaryNode()) {
+        // Since the parent has two children, is a binary branch, we read the left branch by
+        // default, which is used to compare the index range key of the remaining key on the node.
+        // It helps to determine if the current node on the left or right branch of the parent.
         var parentKey = parent.getLastKeyOrRightmost();
-        if (isRemainingInTheLeftBranch(remainingKey, parentKey)) {
-          mergeParentToRightSibling(parentKey, remainingKey);
+        if (isRemainingInTheLeftBranch(remainingKeyOnNode, parentKey)) {
+          mergeParentToRightSibling(parentKey, remainingKeyOnNode);
         } else {
-          mergeParentToLeftSibling(parentKey, remainingKey);
+          mergeParentToLeftSibling(parentKey, remainingKeyOnNode);
         }
       } else {
-        removeKeyOnABalancedNode(remainingKey, parent);
+        removeKeyOnABalancedNode(remainingKeyOnNode, parent);
       }
     }
   }
