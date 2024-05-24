@@ -36,17 +36,27 @@ public class DiskController implements Closeable {
     this.file = new DiskFile(fileName);
   }
 
-  public long append(Page page) {
-    return file.writeAt(page.getPageBuffer());
-  }
-
   public Page read(PageRef pageRef) {
     var bytes = file.readBytes(pageRef.pageOffset(), PAGE_SIZE);
     return new Page(bytes, pageRef);
   }
 
-  public long write(Page page) {
-    return file.writeAt(page.getPageBuffer(), page.getPageRef().pageOffset());
+  /**
+   * Persists an already read page back into the disk.
+   *
+   * @param page Page, read from the disk.
+   * @return {@link PageRef} Page reference of persisted page.
+   */
+  public PageRef persist(Page page) {
+    if (page.getPageRef().hasNoOffset()) {
+      throw new IllegalArgumentException("Cannot persist a page without a reference.");
+    }
+    long offset = file.writeAt(page.getPageBuffer(), page.getPageRef().pageOffset());
+    return PageRef.of(offset);
+  }
+
+  public PageRef append(Page page) {
+    return PageRef.of(file.writeAt(page.getPageBuffer()));
   }
 
   @Override

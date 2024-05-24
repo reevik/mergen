@@ -23,6 +23,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class Page implements Iterable<ByteBuffer> {
 
+  /**
+   * Maximum size in bytes of a page can accept to store a cell:
+   * <pre>
+   * Maximum cell space = Page Size  - Header size - Cell pointer.
+   * </pre>
+   */
+  public static final int MAX_CELL_SPACE = PAGE_SIZE - PageHeader.getSize() - Integer.BYTES;
+
   @Override
   public Iterator<ByteBuffer> iterator() {
     return new Iterator<>() {
@@ -103,11 +111,11 @@ public class Page implements Iterable<ByteBuffer> {
 
   private final PageRef pageRef;
   private int pageSize;
-  private PageRef nextPage;
+  private PageRef nextSlottedPage;
   private PageType pageType;
-  private PageRef parentPageRef;
+  private PageRef parentNodePageRef;
   private int availableSpace;
-  private long siblingOffset = -1L;
+  private long siblingNodeOffset = -1L;
   private int cellCount = 0;
   private ByteBuffer pageBuffer;
   private SerializableObject serializableObject;
@@ -117,12 +125,11 @@ public class Page implements Iterable<ByteBuffer> {
     this.pageBuffer = ByteBuffer.allocate(PAGE_SIZE);
     this.pageSize = PAGE_SIZE;
     this.pageType = PageType.DATA_NODE;
-    this.siblingOffset = -1;
     this.pageRef = serializableObject.getPageRef();
     this.serializableObject = serializableObject;
-    this.parentPageRef = serializableObject.getParentPageRef();
-    this.siblingOffset = serializableObject.getSiblingPageRef().pageOffset();
-    this.nextPage = PageRef.empty();
+    this.parentNodePageRef = serializableObject.getParentPageRef();
+    this.siblingNodeOffset = serializableObject.getNextSlottedPageRef().pageOffset();
+    this.nextSlottedPage = PageRef.empty();
     appendHeader();
   }
 
@@ -137,7 +144,7 @@ public class Page implements Iterable<ByteBuffer> {
   }
 
   public boolean hasSpace(long askedSize) {
-    return getSpaceAvailable() > askedSize;
+    return getSpaceAvailable() + Integer.BYTES > askedSize;
   }
 
   public Page appendCell(ByteBuffer cellBuffer) {
@@ -146,9 +153,11 @@ public class Page implements Iterable<ByteBuffer> {
         .position(PageHeader.CELL_COUNT.offset())
         .putInt(++cellCount)
         .position(getNextCellPointerOffset())
-        .putInt(cellBuffer.capacity())
+        .putInt(cellBuffer.capacity());
+    int spaceAvailable = getSpaceAvailable();
+    pageBuffer
         .position(PageHeader.AVAILABLE.offset())
-        .putInt(getSpaceAvailable());
+        .putInt(spaceAvailable);
     return this;
   }
 
@@ -205,11 +214,11 @@ public class Page implements Iterable<ByteBuffer> {
     pageBuffer = pageBuffer
         .putLong(serializableObject.getPageRef().pageOffset()) // Page reference.
         .putLong(serializableObject.getParentPageRef().pageOffset()) // Parent page reference.
-        .putLong(nextPage.pageOffset())
+        .putLong(nextSlottedPage.pageOffset())
         .putInt(pageSize) // Page size.
         .putInt(PAGE_SIZE - PageHeader.getSize() - Long.BYTES) // Available size.
         .putShort(pageType.toShort()) // Page type.
-        .putLong(serializableObject.getSiblingPageRef().pageOffset())
+        .putLong(serializableObject.getNextSlottedPageRef().pageOffset())
         .putInt(cellCount);
     return this;
   }
@@ -220,5 +229,9 @@ public class Page implements Iterable<ByteBuffer> {
 
   public PageRef getPageRef() {
     return pageRef;
+  }
+
+  public void setNextSlottedPage(PageRef nextSlottedPage) {
+    this.nextSlottedPage = nextSlottedPage;
   }
 }

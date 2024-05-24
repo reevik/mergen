@@ -16,7 +16,9 @@
 package net.reevik.mergen.index;
 
 import static net.reevik.mergen.index.DataRecord.createNew;
+import static net.reevik.mergen.io.DiskFile.PAGE_SIZE;
 
+import java.nio.ByteBuffer;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -49,10 +51,16 @@ public class DataNode extends Node implements Iterable<KeyData> {
     return dataNode;
   }
 
-  @Override
   public Page serialize() {
     Page page = new Page(this);
-    keyDataSet.forEach(keyData -> page.appendCell(keyData.serialize()));
+    for (var keyData : keyDataSet) {
+      ByteBuffer serialize = keyData.serialize();
+      if (!page.hasSpace(serialize.capacity())) {
+        getDiskAccessController().append(page);
+        page = new Page(this);
+      }
+      page.appendCell(keyData.serialize());
+    }
     return page;
   }
 
@@ -156,8 +164,10 @@ public class DataNode extends Node implements Iterable<KeyData> {
   }
 
   @Override
-  List<DataRecord> doQuery(String query, BiFunction<List<KeyData>, DataNode, List<DataRecord>> operation) {
-    List<KeyData> results = keyDataSet.stream().filter(keyData -> keyData.indexKey().equals(query)).toList();
+  List<DataRecord> doQuery(String query,
+      BiFunction<List<KeyData>, DataNode, List<DataRecord>> operation) {
+    List<KeyData> results = keyDataSet.stream().filter(keyData -> keyData.indexKey().equals(query))
+        .toList();
     return operation.apply(results, this);
   }
 
@@ -173,9 +183,21 @@ public class DataNode extends Node implements Iterable<KeyData> {
 
   @Override
   public PageRef persist() {
+    // TODO Precondition checks for the cells bigger than page size.
+    // Alternatively we can split the cell into multiple pages.
     Page page = new Page(this);
-    long offset = getDiskAccessController().write(page);
-    PageRef pageRef = new PageRef(offset);
+    for (var keyData : keyDataSet) {
+      ByteBuffer serialize = keyData.serialize();
+      if (!page.hasSpace(serialize.capacity())) {
+        PageRef pageRef = getDiskAccessController().append(page);
+        page = new Page(this);
+        // we persist the slotted pages backwards, i.e., the last cell's offset (the right most)
+        // will be the node's page offset.
+        page.setNextSlottedPage(pageRef);
+      }
+      page.appendCell(keyData.serialize());
+    }
+    PageRef pageRef = getDiskAccessController().append(page);
     markSynced();
     return pageRef;
   }

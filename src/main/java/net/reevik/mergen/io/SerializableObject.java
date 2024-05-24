@@ -31,14 +31,14 @@ public abstract class SerializableObject {
   private final DiskController diskAccessController;
   private SyncState syncState;
   private PageRef parentPageRef = PageRef.empty();
-  private PageRef siblingPageRef = PageRef.empty();
+  private PageRef nextSlottedPageRef = PageRef.empty();
 
-  public SerializableObject(PageRef pageRef, DiskController diskAccessController) {
+  protected SerializableObject(PageRef pageRef, DiskController diskAccessController) {
     this.pageRef = pageRef;
     this.diskAccessController = diskAccessController;
   }
 
-  public SerializableObject(PageRef pageRef, PageRef parentPageRef,
+  protected SerializableObject(PageRef pageRef, PageRef parentPageRef,
       DiskController diskAccessController) {
     this.pageRef = pageRef;
     this.parentPageRef = parentPageRef;
@@ -82,12 +82,12 @@ public abstract class SerializableObject {
     this.parentPageRef = parentPageRef;
   }
 
-  public void setSiblingPageRef(PageRef siblingPageRef) {
-    this.siblingPageRef = siblingPageRef;
+  public void setNextSlottedPageRef(PageRef nextSlottedPageRef) {
+    this.nextSlottedPageRef = nextSlottedPageRef;
   }
 
-  public PageRef getSiblingPageRef() {
-    return siblingPageRef;
+  public PageRef getNextSlottedPageRef() {
+    return nextSlottedPageRef;
   }
 
   public DiskController getDiskAccessController() {
@@ -101,13 +101,6 @@ public abstract class SerializableObject {
    * @return the page reference including the offset in the file.
    */
   public abstract PageRef persist();
-
-  /**
-   * Serializes the node into a {@link Page} instance.
-   *
-   * @return A {@link Page} instance.
-   */
-  public abstract Page serialize();
 
   public abstract PageType getPageType();
 }

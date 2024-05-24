@@ -54,7 +54,6 @@ public class DataRecord extends SerializableObject {
     return PageRef.empty();
   }
 
-  @Override
   public Page serialize() {
     var page = new Page(this);
     page.appendCell(ByteBuffer.wrap(payload));

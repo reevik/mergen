@@ -15,6 +15,7 @@
  */
 package net.reevik.mergen.index;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -350,12 +351,35 @@ public class InnerNode extends Node implements Iterable<Key> {
     this.rightMost = rightMost;
   }
 
+  // we persist the slotted pages backwards, i.e., the last cell's offset (the right most)
+  // will be the node's page offset.
   @Override
   public PageRef persist() {
-    return PageRef.empty();
+    // TODO Precondition checks for the cells bigger than page size. Alternatively we can split
+    //  the cell into multiple pages.
+    Page page = new Page(this);
+    for (final Key key : keySet) {
+      ByteBuffer keyByteBuf = key.serialize();
+      page = persistIfFull(page, keyByteBuf);
+      page.appendCell(keyByteBuf);
+    }
+    ByteBuffer serialize = rightMost.serialize();
+    page = persistIfFull(page, serialize);
+    PageRef pageRef = getDiskAccessController().append(page);
+    markSynced();
+    return pageRef;
   }
 
-  @Override
+  // Persist if the page is full and create a new page.
+  private Page persistIfFull(Page page, ByteBuffer keyByteBuf) {
+    if (!page.hasSpace(keyByteBuf.capacity())) {
+      PageRef pageRef = getDiskAccessController().append(page);
+      page = new Page(this);
+      page.setNextSlottedPage(pageRef);
+    }
+    return page;
+  }
+
   public Page serialize() {
     var page = new Page(this);
     keySet.forEach(key -> page.appendCell(key.serialize()));
