@@ -154,6 +154,9 @@ public class Page implements Iterable<ByteBuffer> {
         .putInt(++cellCount)
         .position(getNextCellPointerOffset())
         .putInt(cellBuffer.capacity());
+    // space availability check request to move cursor position.
+    // we determine the available space after the cell is written, check available space and
+    // reset the cursor position.
     int spaceAvailable = getSpaceAvailable();
     pageBuffer
         .position(PageHeader.AVAILABLE.offset())
