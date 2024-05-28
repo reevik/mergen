@@ -32,6 +32,7 @@ public class DiskFile implements FileIO, Closeable {
 
   public DiskFile(String fileName) {
     this.fileName = fileName;
+    init();
   }
 
   public void init() {

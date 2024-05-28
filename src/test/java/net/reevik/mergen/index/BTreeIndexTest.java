@@ -21,7 +21,7 @@ import net.reevik.mikron.annotation.ManagedApplication;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-@ManagedApplication(packages = "net.reevik.hierarchy.index.*")
+@ManagedApplication(packages = "net.reevik.mergen.index.*")
 class BTreeIndexTest {
 
   private final BTreeIndex bTreeIndex = new BTreeIndex();

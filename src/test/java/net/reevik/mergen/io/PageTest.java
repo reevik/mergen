@@ -22,10 +22,12 @@ import net.reevik.mergen.index.DataNode;
 import net.reevik.mergen.index.DataRecord;
 import net.reevik.mergen.index.KeyData;
 import net.reevik.mikron.annotation.ManagedApplication;
+import net.reevik.mikron.annotation.ManagedTest;
 import net.reevik.mikron.annotation.Wire;
 import org.junit.jupiter.api.Test;
 
-@ManagedApplication(packages = "net.reevik.hierarchy.*")
+@ManagedApplication(packages = {"net.reevik.mergen.*"})
+@ManagedTest
 public class PageTest {
 
   @Wire(name = "diskAccessController")
@@ -40,10 +42,7 @@ public class PageTest {
     dataNode.add(new KeyData("500", dataRecord500));
     dataNode.add(new KeyData("600", dataRecord600));
     dataNode.add(new KeyData("700", dataRecord700));
-    var page0 = new Page(dataNode);
-    for (var keyData : dataNode) {
-      page0 = page0.appendCell(keyData.serialize());
-    }
+    PageRef persistedPageRef = dataNode.persist();
   }
 
   private DataRecord createDataRecord(Object number) {
