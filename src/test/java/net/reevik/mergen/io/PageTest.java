@@ -18,10 +18,11 @@ package net.reevik.mergen.io;
 import static net.reevik.mergen.index.DataRecord.createNew;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.Collections;
 import java.util.List;
 import net.reevik.mergen.index.DataNode;
 import net.reevik.mergen.index.DataRecord;
+import net.reevik.mergen.index.InnerNode;
+import net.reevik.mergen.index.Key;
 import net.reevik.mergen.index.KeyData;
 import net.reevik.mikron.annotation.ManagedApplication;
 import net.reevik.mikron.annotation.ManagedTest;
@@ -63,6 +64,22 @@ public class PageTest {
                 .toList();
     assertThat(listOfIndexKeys).contains("600");
     assertThat(listOfIndexKeys).contains("700");
+  }
+
+  @Test
+  void testSerializeAndDeserializeInnerNodes() {
+    var innerNode = new InnerNode(diskAccessController);
+    // first item will be moved into the left split as the order=3.
+    innerNode.setRightMost(new Key(new InnerNode(diskAccessController)));
+    innerNode.add(new Key("600", new InnerNode(diskAccessController)));
+    innerNode.add(new Key("700", new InnerNode(diskAccessController)));
+    PageRef persistedPageRef = innerNode.persist();
+    assertThat(persistedPageRef.pageOffset()).isEqualTo(0);
+    var readPage = diskAccessController.read(persistedPageRef);
+    var deserializedNode = InnerNode.deserialize(readPage, diskAccessController);
+    assertThat(deserializedNode.getSize()).isEqualTo(2);
+    assertThat(deserializedNode.getIndexKeys()).contains("600");
+    assertThat(deserializedNode.getIndexKeys()).contains("700");
   }
 
   private DataRecord createDataRecord(Object number) {

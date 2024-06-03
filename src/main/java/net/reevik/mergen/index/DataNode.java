@@ -16,7 +16,6 @@
 package net.reevik.mergen.index;
 
 import static net.reevik.mergen.index.DataRecord.createNew;
-import static net.reevik.mergen.io.DiskFile.PAGE_SIZE;
 
 import java.nio.ByteBuffer;
 import java.util.Iterator;
@@ -93,7 +92,7 @@ public class DataNode extends Node implements Iterable<KeyData> {
       }
     }
     if (keyDataSet.isEmpty() && hasParent()) {
-      getParent().deleteNodeAndRebalanceBy(indexKey);
+      getParent().deleteNodeAndBalanceBy(indexKey);
     }
     return deletedKeyData != null ? deletedKeyData.dataRecord() : null;
   }

@@ -108,7 +108,9 @@ public class InnerNode extends Node implements Iterable<Key> {
     return rightMost.node().doQuery(indexQuery, operation);
   }
 
-  void add(Key key) {
+  // TODO this method needs to be package-private. PageTest needs to access the add-method, hence
+  //  public.
+  public void add(Key key) {
     if (key.isRightMost()) {
       rightMost = key;
     } else {
@@ -139,7 +141,7 @@ public class InnerNode extends Node implements Iterable<Key> {
    *
    * @param indexKey Index key of the node to be deleted.
    */
-  void deleteNodeAndRebalanceBy(String indexKey) {
+  void deleteNodeAndBalanceBy(String indexKey) {
     // Remove the node by the index key in the current node. The current now may be left in
     // unbalanced state, which will be handled below.
     if (removeNodeKeyBy(indexKey) && hasParent()) {
