@@ -136,6 +136,7 @@ public class Page implements Iterable<ByteBuffer> {
   public Page(byte[] buffer, PageRef pageRef) {
     this.pageBuffer = ByteBuffer.wrap(buffer);
     this.pageRef = pageRef;
+    readHeader();
   }
 
   private int getCellSize(int index) {
@@ -224,6 +225,22 @@ public class Page implements Iterable<ByteBuffer> {
         .putLong(serializableObject.getNextSlottedPageRef().pageOffset())
         .putInt(cellCount);
     return this;
+  }
+
+  private void readHeader() {
+    if (pageBuffer.capacity() >= PageHeader.getSize()) {
+      pageBuffer.position(0);
+      long pageOffset = pageBuffer.getLong();
+      parentNodePageRef = PageRef.of(pageBuffer.getLong());
+      nextSlottedPage = PageRef.of(pageBuffer.getLong());
+      pageSize = pageBuffer.getInt();
+      availableSpace = pageBuffer.getInt();
+      pageType = PageType.from(pageBuffer.getShort());
+      siblingNodeOffset = pageBuffer.getLong();
+      cellCount = pageBuffer.getInt();
+    } else {
+      throw new IllegalStateException("Page header is missing.");
+    }
   }
 
   public byte[] getPageBuffer() {

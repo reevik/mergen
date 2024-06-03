@@ -59,6 +59,10 @@ public class DiskController implements Closeable {
     return PageRef.of(file.writeAt(page.getPageBuffer()));
   }
 
+  public void purge() {
+    file.purge();
+  }
+
   @Override
   public void close() throws IOException {
   }

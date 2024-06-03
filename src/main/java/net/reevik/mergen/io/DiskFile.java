@@ -42,8 +42,6 @@ public class DiskFile implements FileIO, Closeable {
       randomAccessFile.seek(randomAccessFile.length());
       channel = randomAccessFile.getChannel();
       this.currentOffset = randomAccessFile.length();
-    } catch (FileNotFoundException e) {
-      throw new RuntimeException(e);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
@@ -57,6 +55,7 @@ public class DiskFile implements FileIO, Closeable {
         buffer.put(data);
         buffer.flip();
         channel.write(buffer);
+        channel.force(true); // TODO is this efficient at all?
         currentOffset += data.length;
       }
     } catch (IOException e) {
@@ -68,7 +67,9 @@ public class DiskFile implements FileIO, Closeable {
 
   public long writeAt(byte[] data) {
     try {
-      return writeAt(data, randomAccessFile.length());
+      long nextOffset = randomAccessFile.length();
+      writeAt(data, nextOffset);
+      return nextOffset;
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
@@ -89,6 +90,15 @@ public class DiskFile implements FileIO, Closeable {
       return out.toByteArray();
     } catch (IOException e) {
       throw new RuntimeException(e);
+    }
+  }
+
+  @Override
+  public void purge() {
+    try {
+      randomAccessFile.setLength(0);
+    } catch (IOException e) {
+      throw new RuntimeException("Cannot purge the file.");
     }
   }
 

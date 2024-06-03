@@ -23,4 +23,6 @@ public interface FileIO {
   long writeAt(byte[] data);
 
   byte[] readBytes(long pageOffset, int pageSize);
+
+  void purge();
 }
