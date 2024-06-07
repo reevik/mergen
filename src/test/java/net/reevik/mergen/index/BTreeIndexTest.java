@@ -18,13 +18,17 @@ package net.reevik.mergen.index;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import net.reevik.mikron.annotation.ManagedApplication;
+import net.reevik.mikron.annotation.ManagedTest;
+import net.reevik.mikron.annotation.Wire;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 @ManagedApplication(packages = "net.reevik.mergen.index.*")
+@ManagedTest
 class BTreeIndexTest {
 
-  private final BTreeIndex bTreeIndex = new BTreeIndex();
+  @Wire
+  private BTreeIndex bTreeIndex;
 
   @BeforeEach
   public void setUp() {

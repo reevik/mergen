@@ -17,14 +17,15 @@ package net.reevik.mergen.io;
 
 import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 
 public class DiskFile implements FileIO, Closeable {
+  private static final String READ_WRITE = "rw";
   public static final int PAGE_SIZE = 1024 * 16;
+
   private final String fileName;
   private RandomAccessFile randomAccessFile;
   private FileChannel channel;
@@ -37,8 +38,7 @@ public class DiskFile implements FileIO, Closeable {
 
   public void init() {
     try {
-      String mode = "rw";
-      randomAccessFile = new RandomAccessFile(fileName, mode);
+      randomAccessFile = new RandomAccessFile(fileName, READ_WRITE);
       randomAccessFile.seek(randomAccessFile.length());
       channel = randomAccessFile.getChannel();
       this.currentOffset = randomAccessFile.length();
